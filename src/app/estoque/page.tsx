@@ -49,8 +49,6 @@ export default function EstoquePage() {
   const [editingStock, setEditingStock] = useState<{id: string, value: string} | null>(null)
   const [sortBy, setSortBy] = useState<'name' | 'stock' | 'price'>('name')
 
-  const supabase = createClient()
-
   useEffect(() => {
     loadTenantAndProducts()
   }, [])
@@ -59,6 +57,8 @@ export default function EstoquePage() {
     try {
       setLoading(true)
       setError(null)
+
+      const supabase = createClient()
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.email) {

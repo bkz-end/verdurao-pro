@@ -17,9 +17,6 @@ export default function EmployeeManagementPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [tenantId, setTenantId] = useState<string | null>(null)
 
-  const supabase = createClient()
-  const storeUserService = new StoreUserService(supabase)
-
   useEffect(() => {
     loadTenantAndEmployees()
   }, [])
@@ -28,6 +25,9 @@ export default function EmployeeManagementPage() {
     try {
       setLoading(true)
       setError(null)
+
+      const supabase = createClient()
+      const storeUserService = new StoreUserService(supabase)
 
       // Get current user's tenant
       const { data: { user } } = await supabase.auth.getUser()
@@ -65,6 +65,8 @@ export default function EmployeeManagementPage() {
 
     try {
       setActionLoading(employeeId)
+      const supabase = createClient()
+      const storeUserService = new StoreUserService(supabase)
       const result = await storeUserService.deactivateEmployee(employeeId)
       if (!result.success) {
         setError(result.error)
@@ -81,6 +83,8 @@ export default function EmployeeManagementPage() {
   async function handleReactivate(employeeId: string) {
     try {
       setActionLoading(employeeId)
+      const supabase = createClient()
+      const storeUserService = new StoreUserService(supabase)
       const result = await storeUserService.reactivateEmployee(employeeId)
       if (!result.success) {
         setError(result.error)
@@ -99,6 +103,8 @@ export default function EmployeeManagementPage() {
 
     try {
       setActionLoading('add')
+      const supabase = createClient()
+      const storeUserService = new StoreUserService(supabase)
       const result = await storeUserService.addEmployee({
         ...data,
         tenant_id: tenantId

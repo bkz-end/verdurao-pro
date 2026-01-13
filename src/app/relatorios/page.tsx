@@ -34,9 +34,6 @@ export default function RelatoriosPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('day')
   const [tenantId, setTenantId] = useState<string | null>(null)
 
-  const supabase = createClient()
-  const reportService = new ReportService(supabase)
-
   useEffect(() => {
     loadTenantAndData()
   }, [])
@@ -45,6 +42,8 @@ export default function RelatoriosPage() {
     try {
       setLoading(true)
       setError(null)
+
+      const supabase = createClient()
 
       // Get current user and their tenant
       const { data: { user } } = await supabase.auth.getUser()
@@ -87,6 +86,9 @@ export default function RelatoriosPage() {
 
   async function loadDashboardData(tid: string) {
     try {
+      const supabase = createClient()
+      const reportService = new ReportService(supabase)
+      
       const [dashboardReport, mostSoldWeek, mostSoldMonth, topProducts, profitMargins] = await Promise.all([
         reportService.getDashboardReport(tid),
         reportService.getMostSoldProduct(tid, 'week'),
