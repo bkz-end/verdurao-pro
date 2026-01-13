@@ -30,7 +30,12 @@ function LoginForm() {
     const result = await login({ email, password })
 
     if (result.success) {
-      router.push('/dashboard')
+      // Redirect based on user type
+      if (result.userType === 'super_admin') {
+        router.push('/admin')
+      } else {
+        router.push('/dashboard')
+      }
       router.refresh()
     } else {
       setError(result.error || 'Erro ao fazer login')

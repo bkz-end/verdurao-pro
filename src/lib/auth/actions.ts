@@ -98,16 +98,20 @@ export async function login(credentials: LoginCredentials): Promise<AuthResult> 
   }
 
   // Check if user is a super admin
-  const { data: superAdmin } = await supabase
-    .from('super_admin_users')
-    .select('id')
-    .eq('email', credentials.email.toLowerCase())
-    .single()
+  try {
+    const { data: superAdmin } = await supabase
+      .from('super_admin_users')
+      .select('id')
+      .eq('email', credentials.email.toLowerCase())
+      .single()
 
-  if (superAdmin) {
-    // Clear failed attempts on successful login
-    recordSuccessfulLogin(credentials.email)
-    return { success: true, userType: 'super_admin' }
+    if (superAdmin) {
+      // Clear failed attempts on successful login
+      recordSuccessfulLogin(credentials.email)
+      return { success: true, userType: 'super_admin' }
+    }
+  } catch {
+    // Table might not exist or no access - continue to check store_users
   }
 
   // Check if store user is active
