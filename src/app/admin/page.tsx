@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AdminService, DashboardMetrics } from '@/lib/admin'
 import { Tenant } from '@/types'
@@ -15,18 +15,13 @@ export default function AdminDashboardPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const router = useRouter()
 
-  const supabase = createClient()
-  const adminService = new AdminService(supabase)
-  const tenantService = new TenantService(supabase)
-
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  async function loadDashboardData() {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
+
+      const supabase = createClient()
+      const adminService = new AdminService(supabase)
 
       const [metricsData, tenantsData] = await Promise.all([
         adminService.getDashboardMetrics(),
@@ -40,11 +35,17 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   async function handleApprove(tenantId: string) {
     try {
       setActionLoading(tenantId)
+      
+      const supabase = createClient()
       
       // Get current user's email
       const { data: { user } } = await supabase.auth.getUser()
@@ -123,6 +124,8 @@ export default function AdminDashboardPage() {
 
     try {
       setActionLoading(tenantId)
+      const supabase = createClient()
+      const tenantService = new TenantService(supabase)
       await tenantService.rejectTenant(tenantId, reason)
       await loadDashboardData()
     } catch (err) {
@@ -138,6 +141,8 @@ export default function AdminDashboardPage() {
 
     try {
       setActionLoading(tenantId)
+      const supabase = createClient()
+      const tenantService = new TenantService(supabase)
       await tenantService.requestMoreInfo(tenantId, questions.split(',').map(q => q.trim()))
       alert('Solicitação enviada com sucesso!')
     } catch (err) {
@@ -150,6 +155,8 @@ export default function AdminDashboardPage() {
   async function handleExportTransactions() {
     try {
       setActionLoading('export')
+      const supabase = createClient()
+      const adminService = new AdminService(supabase)
       const transactions = await adminService.getAllTransactions()
       const csv = adminService.generateTransactionsCSV(transactions)
       
