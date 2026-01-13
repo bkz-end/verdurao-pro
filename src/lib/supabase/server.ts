@@ -1,23 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
 export async function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      '@supabase/ssr: Your project\'s URL and API key are required to create a Supabase client!\n\n' +
-      'Check your Supabase project\'s API settings to find these values\n\n' +
-      'https://supabase.com/dashboard/project/_/settings/api'
-    )
-  }
-
   const cookieStore = await cookies()
 
   return createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
