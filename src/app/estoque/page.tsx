@@ -104,6 +104,8 @@ export default function EstoquePage() {
       setSaving(true)
       setError(null)
 
+      const supabase = createClient()
+
       const price = parseFloat(formData.price.replace(',', '.'))
       const costPrice = formData.cost_price ? parseFloat(formData.cost_price.replace(',', '.')) : null
       const stock = formData.stock ? parseFloat(formData.stock.replace(',', '.')) : 0
@@ -187,6 +189,7 @@ export default function EstoquePage() {
     if (!tenantId || newStock < 0) return
 
     try {
+      const supabase = createClient()
       const { error: updateError } = await supabase
         .from('products')
         .update({ stock: newStock, updated_at: new Date().toISOString() })
@@ -208,6 +211,7 @@ export default function EstoquePage() {
     if (!confirm(`Excluir "${product.name}"?\n\nEssa ação não pode ser desfeita.`)) return
 
     try {
+      const supabase = createClient()
       const { error: deleteError } = await supabase
         .from('products')
         .update({ is_active: false })
