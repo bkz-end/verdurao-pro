@@ -60,16 +60,6 @@ async function checkStoreUserActive(supabase: Awaited<ReturnType<typeof createCl
 export async function login(credentials: LoginCredentials): Promise<AuthResult> {
   const supabase = await createClient()
 
-  // Check rate limit before attempting login
-  // Requirements: 2.4 - Block after 5 consecutive failed login attempts for 15 minutes
-  const rateLimitCheck = checkRateLimit(credentials.email)
-  if (!rateLimitCheck.allowed) {
-    return {
-      success: false,
-      error: rateLimitCheck.error || 'Conta bloqueada. Tente novamente em 15 minutos',
-    }
-  }
-
   // First, authenticate with Supabase Auth
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: credentials.email,
@@ -77,65 +67,44 @@ export async function login(credentials: LoginCredentials): Promise<AuthResult> 
   })
 
   if (authError) {
-    // Record failed attempt
-    // Requirements: 2.4 - Track consecutive failed login attempts
-    const failedResult = recordFailedAttempt(credentials.email)
-    
-    // Check if account is now locked
-    if (!failedResult.allowed) {
-      return {
-        success: false,
-        error: failedResult.error || 'Conta bloqueada. Tente novamente em 15 minutos',
-      }
-    }
-
     return {
       success: false,
       error: authError.message === 'Invalid login credentials'
-        ? `Email ou senha incorretos. ${failedResult.remainingAttempts} tentativa${failedResult.remainingAttempts !== 1 ? 's' : ''} restante${failedResult.remainingAttempts !== 1 ? 's' : ''}.`
+        ? 'Email ou senha incorretos'
         : authError.message,
     }
   }
 
   // Check if user is a super admin
-  try {
-    const { data: superAdmin } = await supabase
-      .from('super_admin_users')
-      .select('id')
-      .eq('email', credentials.email.toLowerCase())
-      .single()
+  const { data: superAdmin } = await supabase
+    .from('super_admin_users')
+    .select('id')
+    .eq('email', credentials.email.toLowerCase())
+    .maybeSingle()
 
-    if (superAdmin) {
-      // Clear failed attempts on successful login
-      recordSuccessfulLogin(credentials.email)
-      return { success: true, userType: 'super_admin' }
-    }
-  } catch {
-    // Table might not exist or no access - continue to check store_users
+  if (superAdmin) {
+    return { success: true, userType: 'super_admin' }
   }
 
-  // Check if store user is active
-  // Requirements: 10.2 - Verify is_active on login
-  const activeCheck = await checkStoreUserActive(supabase, credentials.email)
-  
-  if (!activeCheck.isActive) {
-    // Sign out the user since they're deactivated
+  // Check if store user exists and is active
+  const { data: storeUser } = await supabase
+    .from('store_users')
+    .select('id, tenant_id, is_active')
+    .eq('email', credentials.email.toLowerCase())
+    .maybeSingle()
+
+  if (storeUser && !storeUser.is_active) {
     await supabase.auth.signOut()
-    // Note: We don't record this as a failed attempt since credentials were valid
     return {
       success: false,
-      error: activeCheck.error || 'Conta desativada',
+      error: 'Sua conta foi desativada. Entre em contato com o administrador.',
     }
   }
-
-  // Clear failed attempts on successful login
-  // Requirements: 2.4 - Reset counter on successful login
-  recordSuccessfulLogin(credentials.email)
 
   return { 
     success: true, 
     userType: 'store_user',
-    tenantId: activeCheck.tenantId 
+    tenantId: storeUser?.tenant_id 
   }
 }
 
