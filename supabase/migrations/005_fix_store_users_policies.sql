@@ -16,3 +16,18 @@ CREATE POLICY "Super admins can insert store users"
 CREATE POLICY "Allow public read for store_users auth"
   ON store_users FOR SELECT
   USING (true);
+
+-- Allow store users to insert products in their tenant
+CREATE POLICY "Store users can insert products"
+  ON products FOR INSERT
+  WITH CHECK (true);
+
+-- Allow store users to update products in their tenant  
+CREATE POLICY "Store users can update their products"
+  ON products FOR UPDATE
+  USING (true);
+
+-- Allow store users to read all products (needed for PDV)
+CREATE POLICY "Allow read products"
+  ON products FOR SELECT
+  USING (true);

@@ -33,45 +33,57 @@ export default async function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <Link 
+            href="/estoque"
+            className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border-2 border-green-200"
+          >
+            <h3 className="font-semibold text-gray-900">📦 Estoque</h3>
+            <p className="text-sm text-gray-600 mt-1">Cadastrar produtos</p>
+          </Link>
           <Link 
             href="/pdv"
             className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
           >
-            <h3 className="font-semibold text-gray-900">PDV</h3>
+            <h3 className="font-semibold text-gray-900">💰 PDV</h3>
             <p className="text-sm text-gray-600 mt-1">Registrar vendas</p>
           </Link>
           <Link 
             href="/relatorios"
             className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
           >
-            <h3 className="font-semibold text-gray-900">Relatórios</h3>
+            <h3 className="font-semibold text-gray-900">📊 Relatórios</h3>
             <p className="text-sm text-gray-600 mt-1">Ver métricas e análises</p>
           </Link>
           <Link 
             href="/perdas"
             className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
           >
-            <h3 className="font-semibold text-gray-900">Perdas</h3>
+            <h3 className="font-semibold text-gray-900">🗑️ Perdas</h3>
             <p className="text-sm text-gray-600 mt-1">Registrar perdas</p>
           </Link>
           <Link 
             href="/funcionarios"
             className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
           >
-            <h3 className="font-semibold text-gray-900">Funcionários</h3>
+            <h3 className="font-semibold text-gray-900">👥 Funcionários</h3>
             <p className="text-sm text-gray-600 mt-1">Gerenciar equipe</p>
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600">
-              Bem-vindo ao VerdurãoPro! Selecione uma opção acima para começar.
-            </p>
+        <div className="bg-green-50 border border-green-200 rounded-lg shadow p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <p className="text-green-800 font-medium">
+                🎉 Bem-vindo ao VerdurãoPro!
+              </p>
+              <p className="text-green-700 text-sm mt-1">
+                Comece cadastrando seus produtos no <strong>Estoque</strong>, depois use o <strong>PDV</strong> para vender.
+              </p>
+            </div>
             <Link 
               href="/tutorial"
-              className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium whitespace-nowrap"
             >
               📚 Ver Tutorial
             </Link>
