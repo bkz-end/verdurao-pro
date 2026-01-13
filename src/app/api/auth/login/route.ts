@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -12,7 +13,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { success: false, error: 'Configuração do servidor incompleta' },
+        { status: 500 }
+      )
+    }
+
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // Ignore cookie errors in API routes
+            }
+          },
+        },
+      }
+    )
 
     // Authenticate with Supabase
     const { error: authError } = await supabase.auth.signInWithPassword({
@@ -70,9 +101,10 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Login error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    console.error('Login error:', errorMessage)
     return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
+      { success: false, error: `Erro: ${errorMessage}` },
       { status: 500 }
     )
   }
