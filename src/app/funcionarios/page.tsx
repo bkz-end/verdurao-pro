@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StoreUserService, AddEmployeeInput } from '@/lib/store-users'
 import { StoreUser, UserRole } from '@/types'
+import { BottomNav } from '@/components/ui/bottom-nav'
+import { Icons } from '@/components/ui/icons'
 
 /**
  * Employee Management Page
@@ -126,66 +128,79 @@ export default function EmployeeManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Carregando...</div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Icons.loader className="w-8 h-8 text-emerald-600 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-green-600">Gestão de Funcionários</h1>
+    <div className="min-h-screen bg-slate-50 pb-24">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <Icons.team className="w-5 h-5 text-emerald-600" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-800">Equipe</h1>
+          </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl 
+                       hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md font-medium"
           >
-            + Adicionar Funcionário
+            <Icons.plus className="w-4 h-4" />
+            Adicionar
           </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center justify-between">
+            <span>{error}</span>
             <button 
               onClick={() => setError(null)} 
-              className="ml-2 text-red-500 hover:text-red-700"
+              className="p-1 hover:bg-red-100 rounded-lg transition-colors"
             >
-              ✕
+              <Icons.close className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Employee List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Funcionários ({employees.length})
-            </h2>
+        {/* Employee Count */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Total de funcionários</span>
+            <span className="text-2xl font-bold text-slate-800">{employees.length}</span>
           </div>
-
-          {employees.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              Nenhum funcionário cadastrado
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {employees.map(employee => (
-                <EmployeeCard
-                  key={employee.id}
-                  employee={employee}
-                  onDeactivate={() => handleDeactivate(employee.id)}
-                  onReactivate={() => handleReactivate(employee.id)}
-                  loading={actionLoading === employee.id}
-                />
-              ))}
-            </div>
-          )}
         </div>
+
+        {/* Employee List */}
+        {employees.length === 0 ? (
+          <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-slate-100">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icons.team className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-slate-500">Nenhum funcionário cadastrado</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {employees.map(employee => (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                onDeactivate={() => handleDeactivate(employee.id)}
+                onReactivate={() => handleReactivate(employee.id)}
+                loading={actionLoading === employee.id}
+              />
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
 
       {/* Add Employee Modal */}
       {showAddModal && (

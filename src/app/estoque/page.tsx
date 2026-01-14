@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Product, ProductUnit } from '@/types'
 import Link from 'next/link'
+import { Icons } from '@/components/ui/icons'
+import { BottomNav } from '@/components/ui/bottom-nav'
 
 interface ProductForm {
   id?: string
@@ -26,13 +28,7 @@ const emptyProduct: ProductForm = {
   category: ''
 }
 
-const categories = [
-  'Frutas',
-  'Verduras',
-  'Legumes',
-  'Temperos',
-  'Outros'
-]
+const categories = ['Frutas', 'Verduras', 'Legumes', 'Temperos', 'Outros']
 
 export default function EstoquePage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -43,11 +39,8 @@ export default function EstoquePage() {
   const [formData, setFormData] = useState<ProductForm>(emptyProduct)
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterCategory, setFilterCategory] = useState<string>('')
-  const [filterStock, setFilterStock] = useState<'all' | 'low' | 'out'>('all')
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [editingStock, setEditingStock] = useState<{id: string, value: string} | null>(null)
-  const [sortBy, setSortBy] = useState<'name' | 'stock' | 'price'>('name')
 
   useEffect(() => {
     loadTenantAndProducts()
@@ -56,15 +49,9 @@ export default function EstoquePage() {
   async function loadTenantAndProducts() {
     try {
       setLoading(true)
-      setError(null)
-
       const supabase = createClient()
-
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user?.email) {
-        setError('Usuário não autenticado')
-        return
-      }
+      if (!user?.email) return
 
       const { data: storeUser } = await supabase
         .from('store_users')
@@ -72,25 +59,19 @@ export default function EstoquePage() {
         .eq('email', user.email.toLowerCase())
         .single()
 
-      if (!storeUser) {
-        setError('Usuário não encontrado')
-        return
-      }
-
+      if (!storeUser) return
       setTenantId(storeUser.tenant_id)
 
-      const { data: productsData, error: productsError } = await supabase
+      const { data: productsData } = await supabase
         .from('products')
         .select('*')
         .eq('tenant_id', storeUser.tenant_id)
         .eq('is_active', true)
         .order('name')
 
-      if (productsError) throw productsError
-
       setProducts(productsData || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar produtos')
+      setError(err instanceof Error ? err.message : 'Erro ao carregar')
     } finally {
       setLoading(false)
     }
@@ -103,7 +84,6 @@ export default function EstoquePage() {
     try {
       setSaving(true)
       setError(null)
-
       const supabase = createClient()
 
       const price = parseFloat(formData.price.replace(',', '.'))
@@ -111,66 +91,24 @@ export default function EstoquePage() {
       const stock = formData.stock ? parseFloat(formData.stock.replace(',', '.')) : 0
 
       if (isNaN(price) || price <= 0) {
-        setError('Preço de venda inválido')
+        setError('Preço inválido')
         return
       }
 
-      if (!formData.name.trim()) {
-        setError('Nome do produto é obrigatório')
-        return
-      }
-
-      // Generate SKU if empty
       const sku = formData.sku.trim() || `PRD-${Date.now()}`
 
       if (formData.id) {
-        // Update existing product
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({
-            sku,
-            name: formData.name.trim(),
-            price,
-            cost_price: costPrice,
-            unit: formData.unit,
-            stock,
-            category: formData.category || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', formData.id)
-          .eq('tenant_id', tenantId)
-
-        if (updateError) throw updateError
+        await supabase.from('products').update({
+          sku, name: formData.name.trim(), price, cost_price: costPrice,
+          unit: formData.unit, stock, category: formData.category || null
+        }).eq('id', formData.id)
         setSuccess('Produto atualizado!')
       } else {
-        // Check if SKU already exists
-        const { data: existing } = await supabase
-          .from('products')
-          .select('id')
-          .eq('tenant_id', tenantId)
-          .eq('sku', sku)
-          .single()
-
-        if (existing) {
-          setError('Código/SKU já existe')
-          return
-        }
-
-        const { error: insertError } = await supabase
-          .from('products')
-          .insert({
-            tenant_id: tenantId,
-            sku,
-            name: formData.name.trim(),
-            price,
-            cost_price: costPrice,
-            unit: formData.unit,
-            stock,
-            category: formData.category || null,
-            default_quantity: formData.unit === 'un' ? 1 : 0.5
-          })
-
-        if (insertError) throw insertError
+        await supabase.from('products').insert({
+          tenant_id: tenantId, sku, name: formData.name.trim(), price,
+          cost_price: costPrice, unit: formData.unit, stock,
+          category: formData.category || null, default_quantity: formData.unit === 'un' ? 1 : 0.5
+        })
         setSuccess('Produto cadastrado!')
       }
 
@@ -179,7 +117,7 @@ export default function EstoquePage() {
       await loadTenantAndProducts()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar produto')
+      setError(err instanceof Error ? err.message : 'Erro ao salvar')
     } finally {
       setSaving(false)
     }
@@ -187,453 +125,190 @@ export default function EstoquePage() {
 
   async function handleQuickStockUpdate(productId: string, newStock: number) {
     if (!tenantId || newStock < 0) return
-
     try {
       const supabase = createClient()
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ stock: newStock, updated_at: new Date().toISOString() })
-        .eq('id', productId)
-        .eq('tenant_id', tenantId)
-
-      if (updateError) throw updateError
-
-      setProducts(products.map(p => 
-        p.id === productId ? { ...p, stock: newStock } : p
-      ))
+      await supabase.from('products').update({ stock: newStock }).eq('id', productId)
+      setProducts(products.map(p => p.id === productId ? { ...p, stock: newStock } : p))
       setEditingStock(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar estoque')
+      setError('Erro ao atualizar estoque')
     }
   }
 
   async function handleDeleteProduct(product: Product) {
-    if (!confirm(`Excluir "${product.name}"?\n\nEssa ação não pode ser desfeita.`)) return
-
+    if (!confirm(`Excluir "${product.name}"?`)) return
     try {
       const supabase = createClient()
-      const { error: deleteError } = await supabase
-        .from('products')
-        .update({ is_active: false })
-        .eq('id', product.id)
-        .eq('tenant_id', tenantId)
-
-      if (deleteError) throw deleteError
-
+      await supabase.from('products').update({ is_active: false }).eq('id', product.id)
       setProducts(products.filter(p => p.id !== product.id))
-      setSuccess('Produto excluído')
-      setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir produto')
+      setError('Erro ao excluir')
     }
   }
 
-  function handleEditProduct(product: Product) {
-    setFormData({
-      id: product.id,
-      sku: product.sku,
-      name: product.name,
-      price: product.price.toFixed(2).replace('.', ','),
-      cost_price: product.cost_price?.toFixed(2).replace('.', ',') || '',
-      unit: product.unit,
-      stock: product.stock.toString(),
-      category: product.category || ''
-    })
-    setShowForm(true)
-  }
+  const filteredProducts = products.filter(p => 
+    !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-  // Filter and sort products
-  let filteredProducts = products.filter(p => {
-    const matchesSearch = !searchQuery || 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesCategory = !filterCategory || p.category === filterCategory
-    
-    const matchesStock = filterStock === 'all' ||
-      (filterStock === 'out' && p.stock === 0) ||
-      (filterStock === 'low' && p.stock > 0 && p.stock <= 10)
-
-    return matchesSearch && matchesCategory && matchesStock
-  })
-
-  // Sort
-  filteredProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name)
-    if (sortBy === 'stock') return a.stock - b.stock
-    if (sortBy === 'price') return a.price - b.price
-    return 0
-  })
-
-  const outOfStockCount = products.filter(p => p.stock === 0).length
-  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length
+  const outOfStock = products.filter(p => p.stock === 0).length
+  const lowStock = products.filter(p => p.stock > 0 && p.stock <= 10).length
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando produtos...</p>
-        </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Icons.loader className="w-8 h-8 text-emerald-600 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-700 text-2xl">
-                ←
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-green-600">📦 Estoque</h1>
-                <p className="text-sm text-gray-500">{products.length} produtos cadastrados</p>
-              </div>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+              <Icons.chevronLeft className="w-5 h-5 text-slate-600" />
+            </Link>
+            <div>
+              <h1 className="font-semibold text-slate-800">Estoque</h1>
+              <p className="text-xs text-slate-500">{products.length} produtos</p>
             </div>
-            <button
-              onClick={() => { setFormData(emptyProduct); setShowForm(true) }}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm"
-            >
-              + Novo Produto
-            </button>
           </div>
+          <button
+            onClick={() => { setFormData(emptyProduct); setShowForm(true) }}
+            className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25"
+          >
+            <Icons.plus className="w-5 h-5 text-white" />
+          </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
         {/* Alerts */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-center">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">✕</button>
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
+            <Icons.losses className="w-4 h-4" />
+            {error}
+            <button onClick={() => setError(null)} className="ml-auto"><Icons.close className="w-4 h-4" /></button>
           </div>
         )}
-
         {success && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-            ✓ {success}
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm flex items-center gap-2">
+            <Icons.check className="w-4 h-4" />
+            {success}
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{products.length}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm text-center">
+            <p className="text-2xl font-bold text-slate-800">{products.length}</p>
+            <p className="text-xs text-slate-500">Total</p>
           </div>
-          <div 
-            className={`rounded-lg shadow p-4 cursor-pointer transition-colors ${filterStock === 'out' ? 'bg-red-100 border-2 border-red-400' : 'bg-white hover:bg-red-50'}`}
-            onClick={() => setFilterStock(filterStock === 'out' ? 'all' : 'out')}
-          >
-            <p className="text-sm text-gray-500">Sem Estoque</p>
-            <p className="text-2xl font-bold text-red-600">{outOfStockCount}</p>
+          <div className="bg-red-50 rounded-xl p-3 border border-red-100 text-center">
+            <p className="text-2xl font-bold text-red-600">{outOfStock}</p>
+            <p className="text-xs text-red-600">Sem estoque</p>
           </div>
-          <div 
-            className={`rounded-lg shadow p-4 cursor-pointer transition-colors ${filterStock === 'low' ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-white hover:bg-yellow-50'}`}
-            onClick={() => setFilterStock(filterStock === 'low' ? 'all' : 'low')}
-          >
-            <p className="text-sm text-gray-500">Estoque Baixo</p>
-            <p className="text-2xl font-bold text-yellow-600">{lowStockCount}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500">Valor Total</p>
-            <p className="text-2xl font-bold text-green-600">
-              R$ {products.reduce((sum, p) => sum + (p.price * p.stock), 0).toFixed(2).replace('.', ',')}
-            </p>
+          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 text-center">
+            <p className="text-2xl font-bold text-amber-600">{lowStock}</p>
+            <p className="text-xs text-amber-600">Baixo</p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="🔍 Buscar por nome ou código..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-            <select
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
-            >
-              <option value="">Todas categorias</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as 'name' | 'stock' | 'price')}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
-            >
-              <option value="name">Ordenar: Nome</option>
-              <option value="stock">Ordenar: Estoque</option>
-              <option value="price">Ordenar: Preço</option>
-            </select>
-          </div>
+        {/* Search */}
+        <div className="relative">
+          <Icons.search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar produto..."
+            className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200 rounded-xl text-slate-800"
+          />
         </div>
 
-        {/* Product Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {formData.id ? '✏️ Editar Produto' : '➕ Novo Produto'}
-                </h2>
-                <button
-                  onClick={() => setShowForm(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome do Produto *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Ex: Banana Prata"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 text-lg"
-                      required
-                      autoFocus
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código/SKU
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.sku}
-                      onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                      placeholder="Gerado automaticamente"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Categoria
-                    </label>
-                    <select
-                      value={formData.category}
-                      onChange={e => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900"
-                    >
-                      <option value="">Selecione...</option>
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Preço de Venda (R$) *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.price}
-                      onChange={e => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="0,00"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 text-lg font-semibold"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Preço de Custo (R$)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cost_price}
-                      onChange={e => setFormData({ ...formData, cost_price: e.target.value })}
-                      placeholder="0,00"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Unidade de Medida *
-                    </label>
-                    <select
-                      value={formData.unit}
-                      onChange={e => setFormData({ ...formData, unit: e.target.value as ProductUnit })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900"
-                    >
-                      <option value="kg">Quilograma (kg)</option>
-                      <option value="un">Unidade (un)</option>
-                      <option value="g">Grama (g)</option>
-                      <option value="l">Litro (l)</option>
-                      <option value="ml">Mililitro (ml)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Estoque Inicial
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.stock}
-                      onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                      placeholder="0"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
-                  >
-                    {saving ? 'Salvando...' : (formData.id ? 'Salvar Alterações' : 'Cadastrar Produto')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Products List */}
+        {/* Products */}
         {filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            {products.length === 0 ? (
-              <>
-                <div className="text-6xl mb-4">📦</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum produto cadastrado</h3>
-                <p className="text-gray-500 mb-6">Comece cadastrando seus produtos para usar o PDV</p>
-                <button
-                  onClick={() => { setFormData(emptyProduct); setShowForm(true) }}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                >
-                  Cadastrar Primeiro Produto
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="text-4xl mb-4">🔍</div>
-                <p className="text-gray-500">Nenhum produto encontrado com os filtros selecionados</p>
-                <button
-                  onClick={() => { setSearchQuery(''); setFilterCategory(''); setFilterStock('all') }}
-                  className="mt-4 text-green-600 hover:text-green-700"
-                >
-                  Limpar filtros
-                </button>
-              </>
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-100">
+            <Icons.stock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">Nenhum produto encontrado</p>
+            {products.length === 0 && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium"
+              >
+                Cadastrar primeiro produto
+              </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-3">
             {filteredProducts.map(product => (
               <div 
                 key={product.id} 
-                className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow ${
-                  product.stock === 0 ? 'border-l-4 border-red-500' : 
-                  product.stock <= 10 ? 'border-l-4 border-yellow-500' : ''
-                }`}
+                className={`bg-white rounded-xl p-4 border shadow-sm
+                  ${product.stock === 0 ? 'border-l-4 border-l-red-500 border-slate-100' : 
+                    product.stock <= 10 ? 'border-l-4 border-l-amber-500 border-slate-100' : 'border-slate-100'}`}
               >
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 text-lg">{product.name}</h3>
-                      <p className="text-sm text-gray-500">{product.sku}</p>
-                    </div>
-                    {product.category && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                        {product.category}
-                      </span>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-800">{product.name}</p>
+                    <p className="text-xs text-slate-500">{product.sku} · {product.category || 'Sem categoria'}</p>
+                  </div>
+                  <p className="text-lg font-bold text-emerald-600">
+                    R$ {product.price.toFixed(2).replace('.', ',')}
+                    <span className="text-xs text-slate-500 font-normal">/{product.unit}</span>
+                  </p>
+                </div>
+                
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    {editingStock?.id === product.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={editingStock.value}
+                          onChange={e => setEditingStock({ ...editingStock, value: e.target.value })}
+                          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-center text-slate-800"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleQuickStockUpdate(product.id, parseFloat(editingStock.value) || 0)
+                            if (e.key === 'Escape') setEditingStock(null)
+                          }}
+                        />
+                        <button onClick={() => handleQuickStockUpdate(product.id, parseFloat(editingStock.value) || 0)}>
+                          <Icons.check className="w-5 h-5 text-emerald-600" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setEditingStock({ id: product.id, value: product.stock.toString() })}
+                        className={`px-3 py-1 rounded-full text-sm font-medium
+                          ${product.stock === 0 ? 'bg-red-100 text-red-700' :
+                            product.stock <= 10 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}
+                      >
+                        {product.stock} em estoque
+                      </button>
                     )}
                   </div>
-
-                  <div className="flex items-center justify-between mt-4">
-                    <div>
-                      <p className="text-2xl font-bold text-green-600">
-                        R$ {product.price.toFixed(2).replace('.', ',')}
-                      </p>
-                      <p className="text-sm text-gray-500">por {product.unit}</p>
-                    </div>
-
-                    <div className="text-right">
-                      {editingStock?.id === product.id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            value={editingStock.value}
-                            onChange={e => setEditingStock({ ...editingStock, value: e.target.value })}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-gray-900 text-center"
-                            autoFocus
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                handleQuickStockUpdate(product.id, parseFloat(editingStock.value) || 0)
-                              } else if (e.key === 'Escape') {
-                                setEditingStock(null)
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={() => handleQuickStockUpdate(product.id, parseFloat(editingStock.value) || 0)}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            ✓
-                          </button>
-                        </div>
-                      ) : (
-                        <div 
-                          className="cursor-pointer"
-                          onClick={() => setEditingStock({ id: product.id, value: product.stock.toString() })}
-                        >
-                          <p className={`text-2xl font-bold ${
-                            product.stock === 0 ? 'text-red-600' : 
-                            product.stock <= 10 ? 'text-yellow-600' : 'text-gray-900'
-                          }`}>
-                            {product.stock}
-                          </p>
-                          <p className="text-sm text-gray-500">em estoque</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-1">
                     <button
-                      onClick={() => handleEditProduct(product)}
-                      className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                      onClick={() => { setFormData({
+                        id: product.id, sku: product.sku, name: product.name,
+                        price: product.price.toFixed(2).replace('.', ','),
+                        cost_price: product.cost_price?.toFixed(2).replace('.', ',') || '',
+                        unit: product.unit, stock: product.stock.toString(), category: product.category || ''
+                      }); setShowForm(true) }}
+                      className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
                     >
-                      ✏️ Editar
+                      <Icons.settings className="w-4 h-4 text-slate-500" />
                     </button>
                     <button
                       onClick={() => handleDeleteProduct(product)}
-                      className="flex-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                      className="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center"
                     >
-                      🗑️ Excluir
+                      <Icons.close className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </div>
@@ -642,6 +317,109 @@ export default function EstoquePage() {
           </div>
         )}
       </main>
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up">
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">
+                {formData.id ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
+              <button onClick={() => setShowForm(false)} className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                <Icons.close className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nome *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: Banana Prata"
+                  className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Preço (R$) *</label>
+                  <input
+                    type="text"
+                    value={formData.price}
+                    onChange={e => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="0,00"
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800 font-semibold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Unidade</label>
+                  <select
+                    value={formData.unit}
+                    onChange={e => setFormData({ ...formData, unit: e.target.value as ProductUnit })}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="un">un</option>
+                    <option value="g">g</option>
+                    <option value="l">l</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Custo (R$)</label>
+                  <input
+                    type="text"
+                    value={formData.cost_price}
+                    onChange={e => setFormData({ ...formData, cost_price: e.target.value })}
+                    placeholder="0,00"
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque</label>
+                  <input
+                    type="text"
+                    value={formData.stock}
+                    onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                    placeholder="0"
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
+                <select
+                  value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full h-12 px-4 border border-slate-200 rounded-xl text-slate-800"
+                >
+                  <option value="">Selecione...</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full h-12 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? <Icons.loader className="w-5 h-5 animate-spin" /> : <Icons.check className="w-5 h-5" />}
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <BottomNav />
     </div>
   )
 }

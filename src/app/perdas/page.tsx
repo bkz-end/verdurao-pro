@@ -11,6 +11,8 @@ import { useFeedback } from '@/hooks/useFeedback'
 import { haptics } from '@/lib/utils/haptics'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { BottomNav } from '@/components/ui/bottom-nav'
+import { Icons } from '@/components/ui/icons'
 
 /**
  * Perdas Page - Mobile-first loss registration interface
@@ -193,7 +195,7 @@ export default function PerdasPage() {
   const isFormValid = selectedProduct && quantity > 0 && reason
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Feedback Toast Notifications */}
       <FeedbackComponent />
 
@@ -206,23 +208,20 @@ export default function PerdasPage() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-24">
+      <main className="flex-1 overflow-y-auto pb-40">
         <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
           {/* Page Title with Report Link */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Registrar Perda</h1>
-              <p className="text-gray-500">Informe os detalhes da perda de produto</p>
+              <h1 className="text-2xl font-bold text-slate-800">Registrar Perda</h1>
+              <p className="text-slate-500">Informe os detalhes da perda de produto</p>
             </div>
             <Link
               href="/perdas/relatorio"
-              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-green-600 
-                         bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-600 
+                         bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors shadow-sm"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+              <Icons.reports className="w-4 h-4" />
               Relatório
             </Link>
           </div>
@@ -258,7 +257,7 @@ export default function PerdasPage() {
 
           {/* Notes (Optional) */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-slate-700">
               Observações (opcional)
             </label>
             <textarea
@@ -266,44 +265,43 @@ export default function PerdasPage() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Adicione detalhes sobre a perda..."
               rows={3}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl
-                         focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none
-                         resize-none transition-colors"
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-white
+                         focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none
+                         resize-none transition-colors shadow-sm"
             />
           </div>
-        </div>
-      </main>
 
-      {/* Submit Button - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 safe-area-bottom">
-        <div className="max-w-lg mx-auto">
+          {/* Submit Button */}
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!isFormValid || isLoading}
             className={`
-              w-full h-14 rounded-xl font-semibold text-white
-              transition-all
+              w-full h-14 rounded-xl font-semibold text-white shadow-sm
+              transition-all flex items-center justify-center gap-2
               ${isFormValid && !isLoading
-                ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 active:scale-[0.98]'
-                : 'bg-gray-300 cursor-not-allowed'
+                ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 active:scale-[0.98] hover:shadow-md'
+                : 'bg-slate-300 cursor-not-allowed'
               }
             `}
           >
             {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+              <>
+                <Icons.loader className="w-5 h-5 animate-spin" />
                 Registrando...
-              </span>
+              </>
             ) : (
-              'Registrar Perda'
+              <>
+                <Icons.losses className="w-5 h-5" />
+                Registrar Perda
+              </>
             )}
           </button>
         </div>
-      </div>
+      </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
 
       {/* Product Search Modal */}
       <ProductSearchModal
