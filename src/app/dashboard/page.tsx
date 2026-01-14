@@ -79,6 +79,15 @@ export default function DashboardPage() {
         return
       }
 
+      // Check if user has seen the tutorial
+      const tutorialKey = `tutorial_seen_${user.email}`
+      const hasSeenTutorial = localStorage.getItem(tutorialKey)
+      
+      if (!hasSeenTutorial) {
+        router.replace('/tutorial?first=true')
+        return
+      }
+
       setUserName(storeUser.name || '')
 
       // Load tenant info and stats in parallel for speed

@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const tutorialSteps = [
   {
@@ -88,6 +90,27 @@ const tutorialSteps = [
 
 export default function TutorialPage() {
   const [currentStep, setCurrentStep] = useState(0)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isFirstTime = searchParams.get('first') === 'true'
+
+  const markTutorialAsSeen = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.email) {
+      localStorage.setItem(`tutorial_seen_${user.email}`, 'true')
+    }
+  }
+
+  const handleFinish = async () => {
+    await markTutorialAsSeen()
+    router.push('/dashboard')
+  }
+
+  const handleSkip = async () => {
+    await markTutorialAsSeen()
+    router.push('/dashboard')
+  }
 
   const step = tutorialSteps[currentStep]
   const isFirstStep = currentStep === 0
@@ -102,9 +125,9 @@ export default function TutorialPage() {
             <span className="text-sm text-gray-600">
               Passo {currentStep + 1} de {tutorialSteps.length}
             </span>
-            <Link href="/dashboard" className="text-sm text-green-600 hover:text-green-700">
+            <button onClick={handleSkip} className="text-sm text-green-600 hover:text-green-700">
               Pular tutorial →
-            </Link>
+            </button>
           </div>
           <div className="h-2 bg-gray-200 rounded-full">
             <div 
@@ -164,12 +187,12 @@ export default function TutorialPage() {
           </button>
 
           {isLastStep ? (
-            <Link
-              href="/dashboard"
+            <button
+              onClick={handleFinish}
               className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
             >
               Começar a usar! 🎉
-            </Link>
+            </button>
           ) : (
             <button
               onClick={() => setCurrentStep(prev => prev + 1)}
