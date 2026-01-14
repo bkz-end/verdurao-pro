@@ -43,31 +43,39 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user?.email) {
-        router.push('/login')
+        router.replace('/login')
         return
       }
       
       setUser({ email: user.email })
 
-      // Load store user and tenant in parallel
+      // Load store user
       const { data: storeUser } = await supabase
         .from('store_users')
         .select('tenant_id, name')
         .eq('email', user.email.toLowerCase())
-        .single()
+        .maybeSingle()
 
       if (!storeUser) {
-        // Check if pending tenant
+        // User doesn't have store_user - check if they have a pending tenant
         const { data: tenant } = await supabase
           .from('tenants')
           .select('subscription_status')
           .eq('owner_email', user.email.toLowerCase())
-          .single()
+          .maybeSingle()
         
-        if (tenant?.subscription_status === 'pending') {
-          router.push('/aguardando-aprovacao')
+        if (tenant) {
+          if (tenant.subscription_status === 'pending') {
+            router.replace('/aguardando-aprovacao')
+          } else {
+            // Tenant exists but no store_user - something went wrong in approval
+            // Redirect to waiting page with message
+            router.replace('/aguardando-aprovacao')
+          }
+        } else {
+          // No tenant at all - redirect to register
+          router.replace('/register')
         }
-        setLoading(false)
         return
       }
 

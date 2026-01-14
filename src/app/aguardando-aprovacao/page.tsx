@@ -16,18 +16,28 @@ export default function AguardandoAprovacaoPage() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        router.push('/login')
+        router.replace('/login')
         return
       }
 
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('subscription_status')
-        .eq('owner_email', user.email?.toLowerCase())
-        .maybeSingle()
+      // Check both tenant status AND store_user existence
+      const [tenantRes, storeUserRes] = await Promise.all([
+        supabase
+          .from('tenants')
+          .select('subscription_status')
+          .eq('owner_email', user.email?.toLowerCase() || '')
+          .maybeSingle(),
+        supabase
+          .from('store_users')
+          .select('id')
+          .eq('email', user.email?.toLowerCase() || '')
+          .maybeSingle()
+      ])
 
-      if (tenant?.subscription_status === 'active' || tenant?.subscription_status === 'trial') {
-        router.push('/dashboard')
+      // Only redirect if tenant is active AND store_user exists
+      if (storeUserRes.data && 
+          (tenantRes.data?.subscription_status === 'active' || tenantRes.data?.subscription_status === 'trial')) {
+        router.replace('/dashboard')
       }
       setChecking(false)
     }
@@ -40,7 +50,7 @@ export default function AguardandoAprovacaoPage() {
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.replace('/login')
   }
 
   return (

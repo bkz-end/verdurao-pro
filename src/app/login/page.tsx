@@ -39,8 +39,8 @@ export default function LoginPage() {
         return
       }
 
-      // Check super admin and store user in parallel for speed
-      const [superAdminRes, storeUserRes] = await Promise.all([
+      // Check super admin, store user, and tenant in parallel for speed
+      const [superAdminRes, storeUserRes, tenantRes] = await Promise.all([
         supabase
           .from('super_admin_users')
           .select('id')
@@ -50,6 +50,11 @@ export default function LoginPage() {
           .from('store_users')
           .select('tenant_id')
           .eq('email', email.toLowerCase())
+          .maybeSingle(),
+        supabase
+          .from('tenants')
+          .select('subscription_status')
+          .eq('owner_email', email.toLowerCase())
           .maybeSingle()
       ])
 
@@ -57,9 +62,12 @@ export default function LoginPage() {
         router.replace('/admin')
       } else if (storeUserRes.data) {
         router.replace('/dashboard')
-      } else {
-        // User exists in auth but not in store_users - check if pending tenant
+      } else if (tenantRes.data) {
+        // User has tenant but no store_user - pending approval
         router.replace('/aguardando-aprovacao')
+      } else {
+        // No tenant at all - shouldn't happen but redirect to register
+        router.replace('/register')
       }
 
     } catch (err) {
