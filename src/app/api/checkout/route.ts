@@ -47,6 +47,11 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://verdurao-pro.vercel.app'
+    
+    // Ensure we use the production URL, not preview URLs
+    const baseUrl = appUrl.includes('vercel.app') && !appUrl.includes('-projects.vercel.app') 
+      ? appUrl 
+      : 'https://verdurao-pro.vercel.app'
 
     const preference = {
       items: [
@@ -63,13 +68,13 @@ export async function POST(request: NextRequest) {
         email: tenant.owner_email
       },
       back_urls: {
-        success: `${appUrl}/assinatura?status=success`,
-        failure: `${appUrl}/assinatura?status=failure`,
-        pending: `${appUrl}/assinatura?status=pending`
+        success: `${baseUrl}/assinatura?status=success`,
+        failure: `${baseUrl}/assinatura?status=failure`,
+        pending: `${baseUrl}/assinatura?status=pending`
       },
       auto_return: 'approved',
       external_reference: tenant.id,
-      notification_url: `${appUrl}/api/webhooks/mercado-pago`,
+      notification_url: `${baseUrl}/api/webhooks/mercado-pago`,
       statement_descriptor: 'feirapro',
       expires: false
     }
