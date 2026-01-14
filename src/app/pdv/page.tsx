@@ -10,6 +10,7 @@ import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { QuantityModal } from '@/components/pdv/QuantityModal'
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
+import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
 
 /**
  * PDV Page - Point of Sale mobile-first interface
@@ -24,6 +25,14 @@ import { createClient } from '@/lib/supabase/client'
  */
 
 export default function PDVPage() {
+  return (
+    <SubscriptionGuard>
+      <PDVContent />
+    </SubscriptionGuard>
+  )
+}
+
+function PDVContent() {
   // State
   const [cart, setCart] = useState<Cart>(() => createCart())
   const [searchQuery, setSearchQuery] = useState('')
@@ -46,9 +55,7 @@ export default function PDVPage() {
       
       // Get current user's store info
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user?.email) return
-
-      // Get store user info
+      if (!user?.email) return      // Get store user info
       const { data: storeUser } = await supabase
         .from('store_users')
         .select('tenant_id, name')
