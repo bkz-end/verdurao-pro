@@ -25,21 +25,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Text selection colors - green theme */
+/* Text selection colors - neutral */
 ::selection {
-  background-color: rgba(34, 197, 94, 0.4);
+  background-color: rgba(156, 163, 175, 0.4);
   color: inherit;
 }
 
 ::-moz-selection {
-  background-color: rgba(34, 197, 94, 0.4);
+  background-color: rgba(156, 163, 175, 0.4);
   color: inherit;
 }
 
 /* Input and textarea selection */
 input::selection,
 textarea::selection {
-  background-color: rgba(34, 197, 94, 0.4);
+  background-color: rgba(156, 163, 175, 0.4);
   color: inherit;
 }
 
@@ -63,12 +63,12 @@ textarea:-webkit-autofill:active {
   caret-color: #111827;
 }
 
-/* Focus outline color */
+/* Remove focus outline/ring from inputs */
 input:focus,
 textarea:focus,
-select:focus,
-button:focus {
-  outline-color: rgba(34, 197, 94, 0.5);
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Safe area padding for mobile devices with notches */

@@ -113,7 +113,7 @@ export function SearchBar({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full h-14 pl-12 pr-12 text-lg bg-white border-2 border-gray-200 rounded-xl
-                   focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none
+                   focus:border-gray-400 focus:outline-none
                    transition-all duration-200 placeholder:text-gray-400"
         aria-label="Buscar produto"
       />
