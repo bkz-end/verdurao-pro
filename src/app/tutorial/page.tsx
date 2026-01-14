@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+const WHATSAPP_NUMBER = '5599981796540'
 
 const tutorialSteps = [
   {
@@ -82,7 +84,7 @@ const tutorialSteps = [
     details: [
       'Comece cadastrando seus produtos',
       'Faça sua primeira venda no PDV',
-      'Qualquer dúvida, entre em contato',
+      'Qualquer dúvida, chama no WhatsApp!',
       'Boas vendas! 💚'
     ]
   }
@@ -91,8 +93,6 @@ const tutorialSteps = [
 export default function TutorialPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const isFirstTime = searchParams.get('first') === 'true'
 
   const markTutorialAsSeen = async () => {
     const supabase = createClient()
@@ -159,6 +159,19 @@ export default function TutorialPage() {
               </li>
             ))}
           </ul>
+
+          {isLastStep && (
+            <div className="text-center mb-4">
+              <a 
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Olá! Preciso de ajuda com o FeiraPro`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-medium"
+              >
+                <span>📱</span> Falar no WhatsApp
+              </a>
+            </div>
+          )}
 
           {step.path && (
             <div className="text-center mb-4">
