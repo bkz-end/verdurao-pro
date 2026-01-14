@@ -326,12 +326,13 @@ export class TenantService {
     }
 
     // Create store_user for the owner
+    // Use store_name as the display name (not owner_name)
     const { error: userError } = await this.supabase
       .from('store_users')
       .insert({
         tenant_id: tenantId,
         email: tenant.owner_email.toLowerCase(),
-        name: tenant.owner_name,
+        name: tenant.store_name,
         role: 'owner',
         is_active: true
       })

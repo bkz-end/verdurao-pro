@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Loss, LossReason } from '@/types'
+import { Loss } from '@/types'
 import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { LossReportCard } from '@/components/losses/LossReportCard'
 import { PeriodSelector, getDateRangeForPeriod, ReportPeriod } from '@/components/losses/PeriodSelector'
-import { groupLossesByReason, LossReportByReason } from '@/lib/losses/loss.service'
+import { groupLossesByReason } from '@/lib/losses/loss.service'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 /**
@@ -18,74 +19,58 @@ import Link from 'next/link'
  * - Total losses summary
  */
 
-// Mock data for development - will be replaced with real data from Supabase
-const MOCK_LOSSES: Loss[] = [
-  {
-    id: '1',
-    tenant_id: 'tenant-1',
-    product_id: '1',
-    user_id: 'user-1',
-    quantity: 2.5,
-    reason: 'expiration',
-    notes: 'Bananas passadas',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: '2',
-    tenant_id: 'tenant-1',
-    product_id: '2',
-    user_id: 'user-1',
-    quantity: 1.0,
-    reason: 'damage',
-    notes: 'Maçãs amassadas',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: '3',
-    tenant_id: 'tenant-1',
-    product_id: '3',
-    user_id: 'user-1',
-    quantity: 0.5,
-    reason: 'expiration',
-    notes: null,
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: '4',
-    tenant_id: 'tenant-1',
-    product_id: '4',
-    user_id: 'user-1',
-    quantity: 3,
-    reason: 'theft',
-    notes: 'Furto durante a noite',
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: '5',
-    tenant_id: 'tenant-1',
-    product_id: '5',
-    user_id: 'user-1',
-    quantity: 1.5,
-    reason: 'other',
-    notes: 'Queda acidental',
-    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: '6',
-    tenant_id: 'tenant-1',
-    product_id: '1',
-    user_id: 'user-1',
-    quantity: 4.0,
-    reason: 'expiration',
-    notes: null,
-    created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-  }
-]
-
 export default function LossReportPage() {
   const [period, setPeriod] = useState<ReportPeriod>('month')
-  const [losses] = useState<Loss[]>(MOCK_LOSSES)
+  const [losses, setLosses] = useState<Loss[]>([])
   const [isOnline, setIsOnline] = useState(true)
+  const [storeName, setStoreName] = useState('')
+  const [userName, setUserName] = useState('')
+
+  // Load store data and losses from Supabase
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+      
+      // Get current user's store info
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) return
+
+      // Get store user info
+      const { data: storeUser } = await supabase
+        .from('store_users')
+        .select('tenant_id, name')
+        .eq('email', user.email.toLowerCase())
+        .single()
+
+      if (!storeUser) return
+
+      setUserName(storeUser.name || '')
+
+      // Get tenant info
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('store_name')
+        .eq('id', storeUser.tenant_id)
+        .single()
+
+      if (tenant) {
+        setStoreName(tenant.store_name)
+      }
+
+      // Load losses for this tenant (starts empty for new users)
+      const { data: lossesData } = await supabase
+        .from('losses')
+        .select('*')
+        .eq('tenant_id', storeUser.tenant_id)
+        .order('created_at', { ascending: false })
+
+      if (lossesData) {
+        setLosses(lossesData as Loss[])
+      }
+    }
+
+    loadData()
+  }, [])
 
   // Monitor online status
   useEffect(() => {
@@ -142,8 +127,8 @@ export default function LossReportPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <PDVHeader
-        storeName="Verdurão do João"
-        userName="Maria"
+        storeName={storeName || 'Carregando...'}
+        userName={userName || ''}
         isOnline={isOnline}
         onProfileClick={() => {}}
       />

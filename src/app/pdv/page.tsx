@@ -9,6 +9,7 @@ import { FloatingCart } from '@/components/pdv/FloatingCart'
 import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { QuantityModal } from '@/components/pdv/QuantityModal'
 import { useFeedback } from '@/hooks/useFeedback'
+import { createClient } from '@/lib/supabase/client'
 
 /**
  * PDV Page - Point of Sale mobile-first interface
@@ -22,143 +23,69 @@ import { useFeedback } from '@/hooks/useFeedback'
  * - 3-touch flow: select → quantity → finalize
  */
 
-// Mock data for development - will be replaced with real data from Supabase
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    tenant_id: 'tenant-1',
-    sku: 'BAN001',
-    name: 'Banana Prata',
-    price: 5.99,
-    cost_price: 3.50,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 50,
-    category: 'Frutas',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '2',
-    tenant_id: 'tenant-1',
-    sku: 'MAC001',
-    name: 'Maçã Fuji',
-    price: 8.99,
-    cost_price: 5.00,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 30,
-    category: 'Frutas',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '3',
-    tenant_id: 'tenant-1',
-    sku: 'TOM001',
-    name: 'Tomate Italiano',
-    price: 7.49,
-    cost_price: 4.00,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 25,
-    category: 'Legumes',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '4',
-    tenant_id: 'tenant-1',
-    sku: 'ALF001',
-    name: 'Alface Americana',
-    price: 3.99,
-    cost_price: 2.00,
-    unit: 'un',
-    default_quantity: 1,
-    stock: 40,
-    category: 'Verduras',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '5',
-    tenant_id: 'tenant-1',
-    sku: 'CEP001',
-    name: 'Cebola Roxa',
-    price: 6.99,
-    cost_price: 3.50,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 35,
-    category: 'Legumes',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '6',
-    tenant_id: 'tenant-1',
-    sku: 'LAR001',
-    name: 'Laranja Pera',
-    price: 4.99,
-    cost_price: 2.50,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 60,
-    category: 'Frutas',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '7',
-    tenant_id: 'tenant-1',
-    sku: 'BAT001',
-    name: 'Batata Inglesa',
-    price: 5.49,
-    cost_price: 3.00,
-    unit: 'kg',
-    default_quantity: 0.5,
-    stock: 45,
-    category: 'Legumes',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '8',
-    tenant_id: 'tenant-1',
-    sku: 'COU001',
-    name: 'Couve Manteiga',
-    price: 2.99,
-    cost_price: 1.50,
-    unit: 'un',
-    default_quantity: 1,
-    stock: 0,
-    category: 'Verduras',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-]
-
 export default function PDVPage() {
   // State
   const [cart, setCart] = useState<Cart>(() => createCart())
   const [searchQuery, setSearchQuery] = useState('')
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS)
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(MOCK_PRODUCTS)
+  const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuantityModalOpen, setIsQuantityModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
+  const [storeName, setStoreName] = useState('')
+  const [userName, setUserName] = useState('')
   
   // Feedback hook for visual notifications
   const { showFeedback, FeedbackComponent } = useFeedback()
+
+  // Load store data and products from Supabase
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+      
+      // Get current user's store info
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) return
+
+      // Get store user info
+      const { data: storeUser } = await supabase
+        .from('store_users')
+        .select('tenant_id, name')
+        .eq('email', user.email.toLowerCase())
+        .single()
+
+      if (!storeUser) return
+
+      setUserName(storeUser.name || '')
+
+      // Get tenant info
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('store_name')
+        .eq('id', storeUser.tenant_id)
+        .single()
+
+      if (tenant) {
+        setStoreName(tenant.store_name)
+      }
+
+      // Load products for this tenant (starts empty for new users)
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('*')
+        .eq('tenant_id', storeUser.tenant_id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (productsData) {
+        setProducts(productsData as Product[])
+        setFilteredProducts(productsData as Product[])
+      }
+    }
+
+    loadData()
+  }, [])
 
   // Monitor online status
   useEffect(() => {
@@ -278,8 +205,8 @@ export default function PDVPage() {
       
       {/* Header */}
       <PDVHeader
-        storeName="Verdurão do João"
-        userName="Maria"
+        storeName={storeName || 'Carregando...'}
+        userName={userName || ''}
         isOnline={isOnline}
         onProfileClick={handleProfileClick}
       />

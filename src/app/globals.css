@@ -25,6 +25,52 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Text selection colors - green theme */
+::selection {
+  background-color: rgba(34, 197, 94, 0.4);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgba(34, 197, 94, 0.4);
+  color: inherit;
+}
+
+/* Input and textarea selection */
+input::selection,
+textarea::selection {
+  background-color: rgba(34, 197, 94, 0.4);
+  color: inherit;
+}
+
+/* Remove white/light highlight on tap for mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Input autofill background fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #f9fafb inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827;
+}
+
+/* Focus outline color */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline-color: rgba(34, 197, 94, 0.5);
+}
+
 /* Safe area padding for mobile devices with notches */
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0);
