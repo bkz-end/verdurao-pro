@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Cart } from '@/lib/pdv/pdv.service'
-
-export type SalePaymentMethod = 'dinheiro' | 'pix' | 'cartao'
+import { SalePaymentMethod } from '@/types'
 
 interface CheckoutModalProps {
   cart: Cart
@@ -58,8 +57,14 @@ export function CheckoutModal({ cart, isOpen, isLoading, onClose, onConfirm }: C
     onConfirm(paymentMethod, paid)
   }
 
-  // Quick amount buttons for cash
   const quickAmounts = [10, 20, 50, 100]
+
+  const paymentMethods = [
+    { key: 'dinheiro' as const, icon: '💵', label: 'Dinheiro' },
+    { key: 'pix' as const, icon: '📱', label: 'Pix' },
+    { key: 'cartao' as const, icon: '💳', label: 'Cartão' },
+    { key: 'fiado' as const, icon: '📝', label: 'Fiado' }
+  ]
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
@@ -88,48 +93,23 @@ export function CheckoutModal({ cart, isOpen, isLoading, onClose, onConfirm }: C
           {/* Payment Method */}
           <div className="space-y-3">
             <p className="font-semibold text-gray-700">Forma de Pagamento</p>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => setPaymentMethod('dinheiro')}
-                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2
-                  ${paymentMethod === 'dinheiro' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <span className="text-2xl">💵</span>
-                <span className={`text-sm font-medium ${paymentMethod === 'dinheiro' ? 'text-green-700' : 'text-gray-600'}`}>
-                  Dinheiro
-                </span>
-              </button>
-
-              <button
-                onClick={() => setPaymentMethod('pix')}
-                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2
-                  ${paymentMethod === 'pix' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <span className="text-2xl">📱</span>
-                <span className={`text-sm font-medium ${paymentMethod === 'pix' ? 'text-green-700' : 'text-gray-600'}`}>
-                  Pix
-                </span>
-              </button>
-
-              <button
-                onClick={() => setPaymentMethod('cartao')}
-                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2
-                  ${paymentMethod === 'cartao' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <span className="text-2xl">💳</span>
-                <span className={`text-sm font-medium ${paymentMethod === 'cartao' ? 'text-green-700' : 'text-gray-600'}`}>
-                  Cartão
-                </span>
-              </button>
+            <div className="grid grid-cols-4 gap-2">
+              {paymentMethods.map(({ key, icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setPaymentMethod(key)}
+                  className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1
+                    ${paymentMethod === key 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <span className="text-xl">{icon}</span>
+                  <span className={`text-xs font-medium ${paymentMethod === key ? 'text-green-700' : 'text-gray-600'}`}>
+                    {label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 

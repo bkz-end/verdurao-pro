@@ -6,7 +6,10 @@ export type UserRole = 'owner' | 'manager' | 'cashier'
 export type ProductUnit = 'un' | 'kg' | 'g' | 'l' | 'ml'
 export type LossReason = 'expiration' | 'damage' | 'theft' | 'other'
 export type PaymentMethod = 'mercado_pago' | 'pix' | 'boleto'
+export type SalePaymentMethod = 'dinheiro' | 'pix' | 'cartao' | 'fiado'
 export type ChargeStatus = 'pending' | 'paid' | 'overdue' | 'cancelled'
+export type CashSessionStatus = 'open' | 'closed'
+export type CashMovementType = 'withdrawal' | 'deposit'
 
 export interface SuperAdminUser {
   id: string
@@ -76,6 +79,8 @@ export interface Sale {
   tenant_id: string
   user_id: string
   total: number
+  payment_method: SalePaymentMethod | null
+  session_id: string | null
   created_at: string
   synced_at: string | null
   local_id: string | null
@@ -88,6 +93,30 @@ export interface SaleItem {
   quantity: number
   unit_price: number
   subtotal: number
+}
+
+export interface CashRegisterSession {
+  id: string
+  tenant_id: string
+  user_id: string
+  opened_at: string
+  closed_at: string | null
+  opening_amount: number
+  expected_amount: number | null
+  actual_amount: number | null
+  difference: number | null
+  notes: string | null
+  status: CashSessionStatus
+}
+
+export interface CashMovement {
+  id: string
+  session_id: string
+  user_id: string
+  type: CashMovementType
+  amount: number
+  reason: string
+  created_at: string
 }
 
 export interface Loss {

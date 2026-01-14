@@ -1,29 +1,18 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Product } from '@/types'
+import { Product, CashRegisterSession, SalePaymentMethod } from '@/types'
 import { Cart, createCart, addToCart, updateCartItem, removeFromCart, clearCart } from '@/lib/pdv/pdv.service'
 import { SearchBar } from '@/components/pdv/SearchBar'
 import { ProductPillGrid } from '@/components/pdv/ProductPill'
 import { FloatingCart } from '@/components/pdv/FloatingCart'
 import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { QuantityModal } from '@/components/pdv/QuantityModal'
-import { CheckoutModal, SalePaymentMethod } from '@/components/pdv/CheckoutModal'
+import { CheckoutModal } from '@/components/pdv/CheckoutModal'
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
 import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
-
-/**
- * PDV Page - Point of Sale mobile-first interface
- * Requirements: 4.1, 4.5, 12.5
- * 
- * Features:
- * - Header with store name and profile
- * - Always-visible search bar with auto-focus
- * - Product suggestions grid
- * - Floating cart at bottom
- * - 3-touch flow: select → quantity → finalize
- */
+import Link from 'next/link'
 
 export default function PDVPage() {
   return (
@@ -48,27 +37,32 @@ function PDVContent() {
   const [userName, setUserName] = useState('')
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState('')
+  const [cashSession, setCashSession] = useState<CashRegisterSession | null>(null)
+  const [tenantId, setTenantId] = useState('')
+  const [userId, setUserId] = useState('')
+  const [todaySales, setTodaySales] = useState({ count: 0, total: 0 })
   
-  // Feedback hook for visual notifications
   const { showFeedback, FeedbackComponent } = useFeedback()
 
-  // Load store data and products from Supabase
+  // Load data
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
       
-      // Get current user's store info
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user?.email) return      // Get store user info
+      if (!user?.email) return
+
       const { data: storeUser } = await supabase
         .from('store_users')
-        .select('tenant_id, name')
+        .select('tenant_id, name, id')
         .eq('email', user.email.toLowerCase())
         .single()
 
       if (!storeUser) return
 
       setUserName(storeUser.name || '')
+      setTenantId(storeUser.tenant_id)
+      setUserId(storeUser.id)
 
       // Get tenant info
       const { data: tenant } = await supabase
@@ -81,7 +75,6 @@ function PDVContent() {
         setStoreName(tenant.store_name)
         setSubscriptionStatus(tenant.subscription_status || '')
         
-        // Calculate trial days left
         if (tenant.trial_ends_at) {
           const trialEnd = new Date(tenant.trial_ends_at)
           const now = new Date()
@@ -91,7 +84,7 @@ function PDVContent() {
         }
       }
 
-      // Load products for this tenant (starts empty for new users)
+      // Load products
       const { data: productsData } = await supabase
         .from('products')
         .select('*')
@@ -103,6 +96,33 @@ function PDVContent() {
         setProducts(productsData as Product[])
         setFilteredProducts(productsData as Product[])
       }
+
+      // Check for open cash session
+      const { data: openSession } = await supabase
+        .from('cash_register_sessions')
+        .select('*')
+        .eq('tenant_id', storeUser.tenant_id)
+        .eq('status', 'open')
+        .single()
+
+      setCashSession(openSession)
+
+      // Load today's sales
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('total')
+        .eq('tenant_id', storeUser.tenant_id)
+        .gte('created_at', today.toISOString())
+
+      if (salesData) {
+        setTodaySales({
+          count: salesData.length,
+          total: salesData.reduce((sum, s) => sum + s.total, 0)
+        })
+      }
     }
 
     loadData()
@@ -112,25 +132,21 @@ function PDVContent() {
   useEffect(() => {
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
-
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-
     setIsOnline(navigator.onLine)
-
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [])
 
-  // Filter products based on search query
+  // Filter products
   const handleSearch = useCallback((query: string) => {
     if (!query.trim()) {
       setFilteredProducts(products)
       return
     }
-
     const normalizedQuery = query.toLowerCase().trim()
     const filtered = products.filter(product => {
       const nameMatch = product.name.toLowerCase().includes(normalizedQuery)
@@ -138,52 +154,81 @@ function PDVContent() {
       const categoryMatch = product.category?.toLowerCase().includes(normalizedQuery) ?? false
       return nameMatch || skuMatch || categoryMatch
     })
-
     setFilteredProducts(filtered)
   }, [products])
 
-  // Handle product selection - opens quantity modal (touch 1)
   const handleProductSelect = useCallback((product: Product) => {
     if (product.stock <= 0) return
     setSelectedProduct(product)
     setIsQuantityModalOpen(true)
   }, [])
 
-  // Handle quantity confirmation - adds to cart (touch 2)
   const handleQuantityConfirm = useCallback((product: Product, quantity: number) => {
     setCart(currentCart => addToCart(currentCart, product, quantity))
     setIsQuantityModalOpen(false)
     setSelectedProduct(null)
   }, [])
 
-  // Handle cart item quantity update
   const handleUpdateQuantity = useCallback((itemId: string, quantity: number) => {
     setCart(currentCart => updateCartItem(currentCart, itemId, quantity))
   }, [])
 
-  // Handle cart item removal
   const handleRemoveItem = useCallback((itemId: string) => {
     setCart(currentCart => removeFromCart(currentCart, itemId))
   }, [])
 
-  // Handle cart clear
   const handleClearCart = useCallback(() => {
     setCart(currentCart => clearCart(currentCart))
   }, [])
 
-  // Handle sale finalization - opens checkout modal
   const handleFinalize = useCallback(() => {
     if (cart.items.length === 0) return
     setIsCheckoutModalOpen(true)
   }, [cart.items.length])
 
-  // Handle checkout confirmation with payment method
   const handleCheckoutConfirm = useCallback(async (paymentMethod: SalePaymentMethod, amountPaid?: number) => {
     setIsLoading(true)
 
     try {
-      // TODO: Save sale to database with payment method
-      await new Promise(resolve => setTimeout(resolve, 800))
+      const supabase = createClient()
+      
+      // Create sale
+      const { data: sale, error: saleError } = await supabase
+        .from('sales')
+        .insert({
+          tenant_id: tenantId,
+          user_id: userId,
+          total: cart.total,
+          payment_method: paymentMethod,
+          session_id: cashSession?.id || null
+        })
+        .select()
+        .single()
+
+      if (saleError) throw saleError
+
+      // Create sale items
+      const saleItems = cart.items.map(item => ({
+        sale_id: sale.id,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        subtotal: item.subtotal
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('sale_items')
+        .insert(saleItems)
+
+      if (itemsError) throw itemsError
+
+      // Update stock
+      for (const item of cart.items) {
+        await supabase
+          .from('products')
+          .update({ stock: item.product.stock - item.quantity })
+          .eq('id', item.product.id)
+      }
 
       const formattedTotal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -191,14 +236,37 @@ function PDVContent() {
       }).format(cart.total)
 
       const paymentLabel = paymentMethod === 'dinheiro' ? '💵 Dinheiro' : 
-                          paymentMethod === 'pix' ? '📱 Pix' : '💳 Cartão'
+                          paymentMethod === 'pix' ? '📱 Pix' : 
+                          paymentMethod === 'cartao' ? '💳 Cartão' : '📝 Fiado'
+
+      // Update today's sales
+      setTodaySales(prev => ({
+        count: prev.count + 1,
+        total: prev.total + cart.total
+      }))
+
+      // Update products stock locally
+      setProducts(prev => prev.map(p => {
+        const cartItem = cart.items.find(i => i.product.id === p.id)
+        if (cartItem) {
+          return { ...p, stock: p.stock - cartItem.quantity }
+        }
+        return p
+      }))
+      setFilteredProducts(prev => prev.map(p => {
+        const cartItem = cart.items.find(i => i.product.id === p.id)
+        if (cartItem) {
+          return { ...p, stock: p.stock - cartItem.quantity }
+        }
+        return p
+      }))
 
       setCart(createCart())
       setIsCheckoutModalOpen(false)
 
       showFeedback({
         type: 'success',
-        message: `Venda finalizada! ${formattedTotal} - ${paymentLabel}`,
+        message: `✓ Venda finalizada! ${formattedTotal} - ${paymentLabel}`,
         duration: 3000
       })
     } catch (error) {
@@ -211,23 +279,17 @@ function PDVContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [cart, showFeedback])
+  }, [cart, tenantId, userId, cashSession, showFeedback])
 
-  // Handle profile click
-  const handleProfileClick = useCallback(() => {
-    // TODO: Implement profile menu/navigation
-    console.log('Profile clicked')
-  }, [])
+  const handleProfileClick = useCallback(() => {}, [])
 
-  // Get frequent products (top 6 by some criteria - for now just first 6)
   const frequentProducts = products.slice(0, 6)
+  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Feedback Toast Notifications */}
       <FeedbackComponent />
       
-      {/* Header */}
       <PDVHeader
         storeName={storeName || 'Carregando...'}
         userName={userName || ''}
@@ -237,36 +299,66 @@ function PDVContent() {
         onProfileClick={handleProfileClick}
       />
 
-      {/* Main Content */}
+      {/* Quick Stats Bar */}
+      <div className="bg-white border-b border-gray-100 px-4 py-2">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/pdv/caixa" className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
+              ${cashSession ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+              {cashSession ? '🟢' : '🔴'} Caixa
+            </Link>
+            <Link href="/pdv/historico" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-medium">
+              📋 Histórico
+            </Link>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Hoje</p>
+            <p className="text-sm font-semibold text-gray-800">{todaySales.count} vendas • {formatCurrency(todaySales.total)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Cash Warning */}
+      {!cashSession && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+          <div className="max-w-lg mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600">⚠️</span>
+              <span className="text-sm text-amber-800">Caixa fechado</span>
+            </div>
+            <Link href="/pdv/caixa" className="text-sm font-medium text-amber-700 hover:text-amber-800">
+              Abrir caixa →
+            </Link>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 overflow-y-auto pb-32">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-6">
-          {/* Search Bar - Always visible */}
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
             onSearch={handleSearch}
-            placeholder="Buscar produto por nome ou código..."
+            placeholder="Buscar produto..."
             autoFocus={true}
           />
 
-          {/* Search Results or Suggestions */}
           {searchQuery.trim() ? (
             <ProductPillGrid
               products={filteredProducts}
               onSelect={handleProductSelect}
-              title="Resultados da busca"
+              title="Resultados"
               emptyMessage="Nenhum produto encontrado"
             />
           ) : (
             <>
-              {/* Frequent Products */}
-              <ProductPillGrid
-                products={frequentProducts}
-                onSelect={handleProductSelect}
-                title="Produtos frequentes"
-              />
-
-              {/* All Products */}
+              {frequentProducts.length > 0 && (
+                <ProductPillGrid
+                  products={frequentProducts}
+                  onSelect={handleProductSelect}
+                  title="⭐ Frequentes"
+                />
+              )}
               <ProductPillGrid
                 products={products}
                 onSelect={handleProductSelect}
@@ -277,7 +369,6 @@ function PDVContent() {
         </div>
       </main>
 
-      {/* Floating Cart */}
       <FloatingCart
         cart={cart}
         onUpdateQuantity={handleUpdateQuantity}
@@ -287,7 +378,6 @@ function PDVContent() {
         isLoading={isLoading}
       />
 
-      {/* Quantity Modal */}
       <QuantityModal
         product={selectedProduct}
         isOpen={isQuantityModalOpen}
@@ -298,7 +388,6 @@ function PDVContent() {
         onConfirm={handleQuantityConfirm}
       />
 
-      {/* Checkout Modal */}
       <CheckoutModal
         cart={cart}
         isOpen={isCheckoutModalOpen}
