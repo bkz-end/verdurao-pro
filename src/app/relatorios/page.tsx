@@ -239,7 +239,7 @@ export default function RelatoriosPage() {
                 </div>
                 <div>
                   <p className="text-emerald-100 text-xs">Itens</p>
-                  <p className="text-xl font-bold">{currentReport?.totalItems || 0}</p>
+                  <p className="text-xl font-bold">{currentReport?.totalSales || 0}</p>
                 </div>
               </div>
             </div>
@@ -330,7 +330,7 @@ export default function RelatoriosPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-slate-800">{formatCurrency(product.totalRevenue)}</p>
-                        <p className="text-xs text-slate-500">{product.salesCount} vendas</p>
+                        <p className="text-xs text-slate-500">{product.totalQuantity.toFixed(0)} un</p>
                       </div>
                     </div>
                   ))}
@@ -378,7 +378,7 @@ export default function RelatoriosPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 ml-3">
-                        <span className="text-sm font-medium text-slate-600">{formatCurrency(margin.profit)}</span>
+                        <span className="text-sm font-medium text-slate-600">{formatCurrency(margin.absoluteProfit)}</span>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold
                           ${margin.profitMargin >= 30 ? 'bg-emerald-100 text-emerald-700' :
                             margin.profitMargin >= 15 ? 'bg-amber-100 text-amber-700' :
@@ -451,7 +451,7 @@ export default function RelatoriosPage() {
                     <Icons.stock className="w-4 h-4 text-violet-600" />
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-slate-800">{currentReport?.totalItems || 0}</p>
+                <p className="text-2xl font-bold text-slate-800">{currentReport?.totalSales || 0}</p>
                 <p className="text-xs text-slate-500">Itens vendidos</p>
               </div>
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
