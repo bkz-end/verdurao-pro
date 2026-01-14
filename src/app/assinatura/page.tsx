@@ -52,11 +52,25 @@ export default function AssinaturaPage() {
 
   const handleSubscribe = async () => {
     setLoading(true)
-    // TODO: Integrar com Mercado Pago
-    // Por enquanto, simula redirecionamento
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    alert('Integração com Mercado Pago em desenvolvimento. Entre em contato pelo WhatsApp para assinar.')
-    setLoading(false)
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const data = await response.json()
+
+      if (data.checkoutUrl) {
+        // Redirect to Mercado Pago checkout
+        window.location.href = data.checkoutUrl
+      } else {
+        alert(data.error || 'Erro ao criar checkout. Tente novamente.')
+        setLoading(false)
+      }
+    } catch (error) {
+      alert('Erro ao processar. Tente novamente.')
+      setLoading(false)
+    }
   }
 
   return (
