@@ -242,6 +242,16 @@ export default function DashboardPage() {
                       <Icons.help className="w-5 h-5 text-slate-400" />
                       <span className="text-slate-700">Ajuda</span>
                     </Link>
+                    <a 
+                      href="https://wa.me/5599981796540?text=Olá! Preciso de ajuda com o FeiraPro" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span className="w-5 h-5 text-green-500 flex items-center justify-center">💬</span>
+                      <span className="text-slate-700">WhatsApp</span>
+                    </a>
                     <div className="border-t border-slate-100 my-1" />
                     <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left text-red-600">
                       <Icons.logout className="w-5 h-5" />
