@@ -12,6 +12,7 @@ import Link from 'next/link'
  * - Store name display
  * - Profile icon for user actions
  * - Connection status indicator with pending sync count
+ * - Subscription badge
  * - Minimal design to maximize screen space
  */
 export interface PDVHeaderProps {
@@ -20,6 +21,8 @@ export interface PDVHeaderProps {
   tenantId?: string
   isOnline?: boolean
   pendingSyncCount?: number
+  trialDaysLeft?: number | null
+  subscriptionStatus?: string
   onProfileClick?: () => void
   onSyncComplete?: (syncedCount: number) => void
 }
@@ -30,6 +33,8 @@ export function PDVHeader({
   tenantId,
   isOnline = true,
   pendingSyncCount = 0,
+  trialDaysLeft,
+  subscriptionStatus,
   onProfileClick,
   onSyncComplete
 }: PDVHeaderProps) {
@@ -47,14 +52,41 @@ export function PDVHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Determine subscription badge
+  const getSubscriptionBadge = () => {
+    if (subscriptionStatus === 'active' && (trialDaysLeft === null || trialDaysLeft === undefined || trialDaysLeft <= 0)) {
+      return null // Active subscription, no badge needed
+    }
+    
+    if (trialDaysLeft !== null && trialDaysLeft !== undefined && trialDaysLeft > 0) {
+      // Trial active
+      const bgColor = trialDaysLeft <= 2 ? 'bg-red-500' : trialDaysLeft <= 5 ? 'bg-orange-500' : 'bg-blue-500'
+      return (
+        <Link href="/assinatura" className={`${bgColor} text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse`}>
+          {trialDaysLeft}d
+        </Link>
+      )
+    }
+    
+    // Trial expired or no subscription
+    return (
+      <Link href="/assinatura" className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+        Assinar
+      </Link>
+    )
+  }
+
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 safe-area-top">
       <div className="max-w-lg mx-auto flex items-center justify-between">
-        {/* Store Name */}
+        {/* Store Name and Subscription Badge */}
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-gray-800 truncate max-w-[180px]">
+          <h1 className="text-lg font-bold text-gray-800 truncate max-w-[140px]">
             {storeName}
           </h1>
+          
+          {/* Subscription Badge */}
+          {getSubscriptionBadge()}
           
           {/* Connection Status Indicator */}
           {tenantId ? (

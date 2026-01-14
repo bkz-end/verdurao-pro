@@ -12,7 +12,6 @@ import { CheckoutModal, SalePaymentMethod } from '@/components/pdv/CheckoutModal
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
 import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
-import { SubscriptionFloatingButton } from '@/components/subscription/SubscriptionFloatingButton'
 
 /**
  * PDV Page - Point of Sale mobile-first interface
@@ -47,6 +46,8 @@ function PDVContent() {
   const [isOnline, setIsOnline] = useState(true)
   const [storeName, setStoreName] = useState('')
   const [userName, setUserName] = useState('')
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState('')
   
   // Feedback hook for visual notifications
   const { showFeedback, FeedbackComponent } = useFeedback()
@@ -72,12 +73,22 @@ function PDVContent() {
       // Get tenant info
       const { data: tenant } = await supabase
         .from('tenants')
-        .select('store_name')
+        .select('store_name, trial_ends_at, subscription_status')
         .eq('id', storeUser.tenant_id)
         .single()
 
       if (tenant) {
         setStoreName(tenant.store_name)
+        setSubscriptionStatus(tenant.subscription_status || '')
+        
+        // Calculate trial days left
+        if (tenant.trial_ends_at) {
+          const trialEnd = new Date(tenant.trial_ends_at)
+          const now = new Date()
+          const diffTime = trialEnd.getTime() - now.getTime()
+          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+          setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0)
+        }
       }
 
       // Load products for this tenant (starts empty for new users)
@@ -221,6 +232,8 @@ function PDVContent() {
         storeName={storeName || 'Carregando...'}
         userName={userName || ''}
         isOnline={isOnline}
+        trialDaysLeft={trialDaysLeft}
+        subscriptionStatus={subscriptionStatus}
         onProfileClick={handleProfileClick}
       />
 
@@ -293,9 +306,6 @@ function PDVContent() {
         onClose={() => setIsCheckoutModalOpen(false)}
         onConfirm={handleCheckoutConfirm}
       />
-
-      {/* Subscription Floating Button */}
-      <SubscriptionFloatingButton />
     </div>
   )
 }

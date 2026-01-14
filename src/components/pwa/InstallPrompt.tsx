@@ -13,14 +13,16 @@ export function InstallPrompt() {
   const [isClosing, setIsClosing] = useState(false)
 
   useEffect(() => {
-    // Check if already installed or dismissed recently
+    // Check if already dismissed (never show again after dismissal)
     const dismissed = localStorage.getItem('pwa-install-dismissed')
     if (dismissed) {
-      const dismissedTime = parseInt(dismissed, 10)
-      // Don't show for 7 days after dismissal
-      if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) {
-        return
-      }
+      return
+    }
+
+    // Check if already shown in this session
+    const shownThisSession = sessionStorage.getItem('pwa-install-shown')
+    if (shownThisSession) {
+      return
     }
 
     // Check if running as PWA
@@ -31,8 +33,13 @@ export function InstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show prompt after 3 seconds
-      setTimeout(() => setShowPrompt(true), 3000)
+      // Show prompt after 3 seconds, only once per session
+      setTimeout(() => {
+        if (!sessionStorage.getItem('pwa-install-shown')) {
+          setShowPrompt(true)
+          sessionStorage.setItem('pwa-install-shown', 'true')
+        }
+      }, 3000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)

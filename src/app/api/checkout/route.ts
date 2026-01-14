@@ -87,9 +87,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
 
-    // Return the checkout URL
-    const isSandbox = process.env.MERCADO_PAGO_SANDBOX === 'true'
-    const checkoutUrl = isSandbox ? data.sandbox_init_point : data.init_point
+    // Return the checkout URL - prefer init_point (production), fallback to sandbox
+    const checkoutUrl = data.init_point || data.sandbox_init_point
+
+    if (!checkoutUrl) {
+      console.error('No checkout URL returned:', data)
+      return NextResponse.json({ error: 'URL de checkout não disponível' }, { status: 500 })
+    }
 
     return NextResponse.json({
       checkoutUrl,
