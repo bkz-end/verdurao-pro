@@ -46,18 +46,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Mercado Pago não configurado' }, { status: 500 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://verdurao-pro.vercel.app'
-    
-    // Ensure we use the production URL, not preview URLs
-    const baseUrl = appUrl.includes('vercel.app') && !appUrl.includes('-projects.vercel.app') 
-      ? appUrl 
-      : 'https://verdurao-pro.vercel.app'
+    // Use hardcoded production URL to avoid any env var issues
+    const baseUrl = 'https://verdurao-pro.vercel.app'
 
     const preference = {
       items: [
         {
           id: `subscription-${tenant.id}`,
-          title: `FeiraPro - Assinatura Mensal`,
+          title: 'FeiraPro - Assinatura Mensal',
           description: `Assinatura mensal do FeiraPro para ${tenant.store_name}`,
           quantity: 1,
           currency_id: 'BRL',
@@ -68,16 +64,17 @@ export async function POST(request: NextRequest) {
         email: tenant.owner_email
       },
       back_urls: {
-        success: `${baseUrl}/assinatura?status=success`,
-        failure: `${baseUrl}/assinatura?status=failure`,
-        pending: `${baseUrl}/assinatura?status=pending`
+        success: baseUrl + '/assinatura',
+        failure: baseUrl + '/assinatura',
+        pending: baseUrl + '/assinatura'
       },
       auto_return: 'approved',
       external_reference: tenant.id,
-      notification_url: `${baseUrl}/api/webhooks/mercado-pago`,
-      statement_descriptor: 'feirapro',
-      expires: false
+      notification_url: baseUrl + '/api/webhooks/mercado-pago',
+      statement_descriptor: 'FEIRAPRO'
     }
+
+    console.log('Creating preference with:', JSON.stringify(preference, null, 2))
 
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -88,8 +85,17 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(preference)
     })
 
+    const responseText = await response.text()
+    console.log('Mercado Pago response status:', response.status)
+    console.log('Mercado Pago response:', responseText)
+
     if (!response.ok) {
-      const errorData = await response.json()
+      let errorData
+      try {
+        errorData = JSON.parse(responseText)
+      } catch {
+        errorData = { message: responseText }
+      }
       console.error('Mercado Pago API error:', JSON.stringify(errorData, null, 2))
       return NextResponse.json({ 
         error: 'Erro ao criar checkout', 
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const data = await response.json()
+    const data = JSON.parse(responseText)
 
     // Return the checkout URL - prefer init_point (production), fallback to sandbox
     const checkoutUrl = data.init_point || data.sandbox_init_point
