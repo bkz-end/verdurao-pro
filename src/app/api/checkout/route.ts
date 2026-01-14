@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       items: [
         {
           id: `subscription-${tenant.id}`,
-          title: `VerdurãoPro - Assinatura Mensal`,
-          description: `Assinatura mensal do VerdurãoPro para ${tenant.store_name}`,
+          title: `FeiraPro - Assinatura Mensal`,
+          description: `Assinatura mensal do FeiraPro para ${tenant.store_name}`,
           quantity: 1,
           currency_id: 'BRL',
           unit_price: tenant.monthly_price || 45.90

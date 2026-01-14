@@ -1,7 +1,7 @@
 {
-  "name": "VerdurãoPro",
-  "short_name": "VerdurãoPro",
-  "description": "Sistema de gestão para verdurões e hortifrútis",
+  "name": "FeiraPro",
+  "short_name": "FeiraPro",
+  "description": "Sistema de gestão para feiras, verdurões e hortifrútis",
   "start_url": "/pdv",
   "display": "standalone",
   "background_color": "#16a34a",

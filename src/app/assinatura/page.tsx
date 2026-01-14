@@ -273,7 +273,7 @@ export default function AssinaturaPage() {
         <div className="text-center space-y-3 pb-8">
           <p className="text-gray-600">Ainda tem dúvidas?</p>
           <a
-            href="https://wa.me/5511999999999?text=Olá! Tenho dúvidas sobre o VerdurãoPro"
+            href="https://wa.me/5511999999999?text=Olá! Tenho dúvidas sobre o FeiraPro"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors"

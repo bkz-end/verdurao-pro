@@ -91,9 +91,9 @@ export function InstallPrompt() {
         {/* Header with icon */}
         <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-center">
           <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <span className="text-4xl font-bold text-green-600">V</span>
+            <span className="text-4xl font-bold text-green-600">F</span>
           </div>
-          <h2 className="text-2xl font-bold text-white">Instale o VerdurãoPro!</h2>
+          <h2 className="text-2xl font-bold text-white">Instale o FeiraPro!</h2>
         </div>
 
         {/* Content */}

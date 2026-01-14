@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-green-600">VerdurãoPro</h1>
+          <h1 className="text-xl font-bold text-green-600">FeiraPro</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user.email}</span>
             <form action={logout}>
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <p className="text-green-800 font-medium">
-                🎉 Bem-vindo ao VerdurãoPro!
+                🎉 Bem-vindo ao FeiraPro!
               </p>
               <p className="text-green-700 text-sm mt-1">
                 Comece cadastrando seus produtos no <strong>Estoque</strong>, depois use o <strong>PDV</strong> para vender.

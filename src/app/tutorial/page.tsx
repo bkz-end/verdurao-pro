@@ -6,8 +6,8 @@ import Link from 'next/link'
 const tutorialSteps = [
   {
     id: 1,
-    title: 'Bem-vindo ao VerdurãoPro! 🥬',
-    description: 'O sistema completo para gerenciar seu verdurão. Vamos te mostrar como usar cada funcionalidade.',
+    title: 'Bem-vindo ao FeiraPro! 🥬',
+    description: 'O sistema completo para gerenciar sua feira ou verdurão. Vamos te mostrar como usar cada funcionalidade.',
     icon: '👋',
     details: [
       'Sistema de PDV rápido e fácil',

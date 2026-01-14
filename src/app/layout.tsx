@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VerdurãoPro - Sistema de Gestão para Verdurões",
-  description: "Sistema completo de gestão para verdurões e hortifrútis",
+  title: "FeiraPro - Sistema de Gestão para Feiras e Hortifrútis",
+  description: "Sistema completo de gestão para feiras, verdurões e hortifrútis",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "VerdurãoPro",
+    title: "FeiraPro",
   },
   formatDetection: {
     telephone: false,

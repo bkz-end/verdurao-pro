@@ -215,7 +215,7 @@ export class MercadoPagoService {
         },
         body: JSON.stringify({
           transaction_amount: charge.amount,
-          description: `VerdurãoPro - Mensalidade`,
+          description: `FeiraPro - Mensalidade`,
           payment_method_id: 'pix',
           payer: {
             email: payerEmail
@@ -282,7 +282,7 @@ export class MercadoPagoService {
         },
         body: JSON.stringify({
           transaction_amount: charge.amount,
-          description: `VerdurãoPro - Mensalidade`,
+          description: `FeiraPro - Mensalidade`,
           payment_method_id: 'bolbradesco', // Bradesco boleto
           payer: {
             email: payerEmail,
