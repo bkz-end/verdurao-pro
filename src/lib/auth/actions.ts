@@ -67,11 +67,17 @@ export async function login(credentials: LoginCredentials): Promise<AuthResult> 
   })
 
   if (authError) {
+    let errorMessage = authError.message
+    
+    if (authError.message === 'Invalid login credentials') {
+      errorMessage = 'Email ou senha incorretos'
+    } else if (authError.message === 'Email not confirmed') {
+      errorMessage = 'Email não confirmado. Verifique sua caixa de entrada ou aguarde a aprovação do administrador.'
+    }
+    
     return {
       success: false,
-      error: authError.message === 'Invalid login credentials'
-        ? 'Email ou senha incorretos'
-        : authError.message,
+      error: errorMessage,
     }
   }
 

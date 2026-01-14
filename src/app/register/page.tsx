@@ -40,9 +40,19 @@ export default function RegisterPage() {
       const supabase = createClient()
       
       // 1. Criar usuário no Supabase Auth
-      const { error: authError } = await supabase.auth.signUp({
+      // Nota: emailRedirectTo desabilita a confirmação automática de email
+      // O email será confirmado quando o admin aprovar o cadastro
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        options: {
+          // Desabilita email de confirmação - admin vai aprovar manualmente
+          emailRedirectTo: undefined,
+          data: {
+            store_name: formData.storeName,
+            owner_name: formData.ownerName
+          }
+        }
       })
 
       if (authError) {
