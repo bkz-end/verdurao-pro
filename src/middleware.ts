@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/register', '/auth', '/api/auth', '/tutorial']
+  const publicRoutes = ['/login', '/register', '/auth', '/api/auth', '/tutorial', '/aguardando-aprovacao']
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname === route || 
     request.nextUrl.pathname.startsWith(route + '/')
@@ -52,9 +52,56 @@ export async function middleware(request: NextRequest) {
       .eq('email', user.email?.toLowerCase() || '')
       .maybeSingle()
 
+    if (superAdmin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // Check tenant status
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('subscription_status')
+      .eq('owner_email', user.email?.toLowerCase() || '')
+      .maybeSingle()
+
     const url = request.nextUrl.clone()
-    url.pathname = superAdmin ? '/admin' : '/dashboard'
+    
+    if (!tenant || tenant.subscription_status === 'pending') {
+      url.pathname = '/aguardando-aprovacao'
+    } else {
+      url.pathname = '/dashboard'
+    }
+    
     return NextResponse.redirect(url)
+  }
+
+  // Check if user is trying to access protected routes without approval
+  if (user && !isPublicRoute && !request.nextUrl.pathname.startsWith('/admin')) {
+    // Check if super admin (they can access anything)
+    const { data: superAdmin } = await supabase
+      .from('super_admin_users')
+      .select('id')
+      .eq('email', user.email?.toLowerCase() || '')
+      .maybeSingle()
+
+    if (!superAdmin) {
+      // Check tenant status
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('subscription_status')
+        .eq('owner_email', user.email?.toLowerCase() || '')
+        .maybeSingle()
+
+      // Redirect pending users to waiting page
+      if (!tenant || tenant.subscription_status === 'pending') {
+        if (request.nextUrl.pathname !== '/aguardando-aprovacao') {
+          const url = request.nextUrl.clone()
+          url.pathname = '/aguardando-aprovacao'
+          return NextResponse.redirect(url)
+        }
+      }
+    }
   }
 
   return supabaseResponse

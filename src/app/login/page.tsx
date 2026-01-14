@@ -23,6 +23,18 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       })
 
+      if (!response.ok) {
+        // Tenta ler o JSON da resposta, mas trata caso não exista
+        let result
+        try {
+          result = await response.json()
+        } catch {
+          throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`)
+        }
+        setError(result.error || 'Erro ao fazer login')
+        return
+      }
+
       const result = await response.json()
 
       if (result.success) {
@@ -31,8 +43,9 @@ export default function LoginPage() {
       } else {
         setError(result.error || 'Erro ao fazer login')
       }
-    } catch {
-      setError('Erro de conexão. Tente novamente.')
+    } catch (error) {
+      console.error('Login error:', error)
+      setError('Erro de conexão. Verifique sua internet e tente novamente.')
     }
 
     setLoading(false)
