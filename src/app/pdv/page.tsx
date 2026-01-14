@@ -57,48 +57,48 @@ function PDVContent() {
       setTenantId(storeUser.tenant_id)
       setUserId(storeUser.id)
 
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('store_name')
-        .eq('id', storeUser.tenant_id)
-        .single()
-
-      if (tenant) setStoreName(tenant.store_name)
-
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('tenant_id', storeUser.tenant_id)
-        .eq('is_active', true)
-        .order('name')
-
-      if (productsData) {
-        setProducts(productsData as Product[])
-        setFilteredProducts(productsData as Product[])
-      }
-
-      const { data: openSession } = await supabase
-        .from('cash_register_sessions')
-        .select('*')
-        .eq('tenant_id', storeUser.tenant_id)
-        .eq('status', 'open')
-        .single()
-
-      setCashSession(openSession)
-
+      // Load all data in parallel for speed
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
-      const { data: salesData } = await supabase
-        .from('sales')
-        .select('total')
-        .eq('tenant_id', storeUser.tenant_id)
-        .gte('created_at', today.toISOString())
 
-      if (salesData) {
+      const [tenantRes, productsRes, sessionRes, salesRes] = await Promise.all([
+        supabase
+          .from('tenants')
+          .select('store_name')
+          .eq('id', storeUser.tenant_id)
+          .single(),
+        supabase
+          .from('products')
+          .select('*')
+          .eq('tenant_id', storeUser.tenant_id)
+          .eq('is_active', true)
+          .order('name'),
+        supabase
+          .from('cash_register_sessions')
+          .select('*')
+          .eq('tenant_id', storeUser.tenant_id)
+          .eq('status', 'open')
+          .maybeSingle(),
+        supabase
+          .from('sales')
+          .select('total')
+          .eq('tenant_id', storeUser.tenant_id)
+          .gte('created_at', today.toISOString())
+      ])
+
+      if (tenantRes.data) setStoreName(tenantRes.data.store_name)
+      
+      if (productsRes.data) {
+        setProducts(productsRes.data as Product[])
+        setFilteredProducts(productsRes.data as Product[])
+      }
+
+      setCashSession(sessionRes.data)
+
+      if (salesRes.data) {
         setTodaySales({
-          count: salesData.length,
-          total: salesData.reduce((sum, s) => sum + s.total, 0)
+          count: salesRes.data.length,
+          total: salesRes.data.reduce((sum, s) => sum + s.total, 0)
         })
       }
     }

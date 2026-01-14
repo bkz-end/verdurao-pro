@@ -38,6 +38,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
+      
+      // Get user first - fast operation
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user?.email) {
@@ -47,43 +49,42 @@ export default function DashboardPage() {
       
       setUser({ email: user.email })
 
+      // Load store user and tenant in parallel
       const { data: storeUser } = await supabase
         .from('store_users')
         .select('tenant_id, name')
         .eq('email', user.email.toLowerCase())
         .single()
 
-      if (!storeUser) return
+      if (!storeUser) {
+        // Check if pending tenant
+        const { data: tenant } = await supabase
+          .from('tenants')
+          .select('subscription_status')
+          .eq('owner_email', user.email.toLowerCase())
+          .single()
+        
+        if (tenant?.subscription_status === 'pending') {
+          router.push('/aguardando-aprovacao')
+        }
+        setLoading(false)
+        return
+      }
 
       setUserName(storeUser.name || '')
 
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('store_name, trial_ends_at, subscription_status')
-        .eq('id', storeUser.tenant_id)
-        .single()
-
-      if (tenant) {
-        setStoreName(tenant.store_name)
-        setSubscriptionStatus(tenant.subscription_status || '')
-        
-        if (tenant.trial_ends_at) {
-          const trialEnd = new Date(tenant.trial_ends_at)
-          const now = new Date()
-          const diffTime = trialEnd.getTime() - now.getTime()
-          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0)
-        }
-      }
-
-      // Load stats
+      // Load tenant info and stats in parallel for speed
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
 
-      const [todaySalesRes, yesterdaySalesRes, productsRes] = await Promise.all([
+      const [tenantRes, todaySalesRes, yesterdaySalesRes, productsRes] = await Promise.all([
+        supabase
+          .from('tenants')
+          .select('store_name, trial_ends_at, subscription_status')
+          .eq('id', storeUser.tenant_id)
+          .single(),
         supabase
           .from('sales')
           .select('total')
@@ -101,6 +102,19 @@ export default function DashboardPage() {
           .eq('tenant_id', storeUser.tenant_id)
           .eq('is_active', true)
       ])
+
+      if (tenantRes.data) {
+        setStoreName(tenantRes.data.store_name)
+        setSubscriptionStatus(tenantRes.data.subscription_status || '')
+        
+        if (tenantRes.data.trial_ends_at) {
+          const trialEnd = new Date(tenantRes.data.trial_ends_at)
+          const now = new Date()
+          const diffTime = trialEnd.getTime() - now.getTime()
+          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+          setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0)
+        }
+      }
 
       const todaySales = todaySalesRes.data?.length || 0
       const todayTotal = todaySalesRes.data?.reduce((sum, s) => sum + s.total, 0) || 0

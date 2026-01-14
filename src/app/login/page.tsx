@@ -28,32 +28,45 @@ export default function LoginPage() {
       })
 
       if (authError) {
-        setError(authError.message === 'Invalid login credentials' 
-          ? 'Email ou senha incorretos' 
-          : authError.message)
+        let errorMessage = authError.message
+        if (authError.message === 'Invalid login credentials') {
+          errorMessage = 'Email ou senha incorretos'
+        } else if (authError.message === 'Email not confirmed') {
+          errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.'
+        }
+        setError(errorMessage)
         setLoading(false)
         return
       }
 
-      const { data: superAdmin } = await supabase
-        .from('super_admin_users')
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .maybeSingle()
+      // Check super admin and store user in parallel for speed
+      const [superAdminRes, storeUserRes] = await Promise.all([
+        supabase
+          .from('super_admin_users')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .maybeSingle(),
+        supabase
+          .from('store_users')
+          .select('tenant_id')
+          .eq('email', email.toLowerCase())
+          .maybeSingle()
+      ])
 
-      if (superAdmin) {
-        router.push('/admin')
+      if (superAdminRes.data) {
+        router.replace('/admin')
+      } else if (storeUserRes.data) {
+        router.replace('/dashboard')
       } else {
-        router.push('/dashboard')
+        // User exists in auth but not in store_users - check if pending tenant
+        router.replace('/aguardando-aprovacao')
       }
-      router.refresh()
 
     } catch (err) {
       setError('Erro de conexão. Tente novamente.')
       console.error(err)
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
