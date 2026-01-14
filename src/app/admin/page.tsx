@@ -53,62 +53,19 @@ export default function AdminDashboardPage() {
         setError('Usuário não autenticado')
         return
       }
-      
-      // Get admin ID from super_admin_users table
-      const { data: adminData } = await supabase
-        .from('super_admin_users')
-        .select('id')
-        .eq('email', user.email.toLowerCase())
-        .single()
-      
-      if (!adminData) {
-        setError('Você não tem permissão para aprovar')
+
+      // Call API route that uses service role to bypass RLS
+      const response = await fetch('/api/admin/approve-tenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, adminEmail: user.email })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || 'Erro ao aprovar loja')
         return
-      }
-
-      // Get tenant data first
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('id', tenantId)
-        .single()
-
-      if (!tenant) {
-        setError('Tenant não encontrado')
-        return
-      }
-
-      // Update tenant status
-      const { error: updateError } = await supabase
-        .from('tenants')
-        .update({
-          approved_by_admin: true,
-          subscription_status: 'active',
-          approved_at: new Date().toISOString(),
-          approved_by: adminData.id
-        })
-        .eq('id', tenantId)
-
-      if (updateError) {
-        setError('Erro ao aprovar: ' + updateError.message)
-        return
-      }
-
-      // Create store_user for the owner
-      const { error: userError } = await supabase
-        .from('store_users')
-        .insert({
-          tenant_id: tenantId,
-          email: tenant.owner_email.toLowerCase(),
-          name: tenant.owner_name,
-          role: 'owner',
-          is_active: true
-        })
-
-      if (userError) {
-        console.error('Erro ao criar store_user:', userError)
-        setError('Tenant aprovado, mas erro ao criar usuário: ' + userError.message)
-        // Don't return - tenant is approved, just show warning
       }
 
       await loadDashboardData()
