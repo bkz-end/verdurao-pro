@@ -83,6 +83,39 @@ export default function LojasPage() {
     }
   }
 
+  async function handleFixStoreUser(tenantId: string) {
+    try {
+      setActionLoading(tenantId)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user?.email) {
+        setError('Usuário não autenticado')
+        return
+      }
+
+      const response = await fetch('/api/admin/fix-store-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, adminEmail: user.email })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error + (result.details ? `: ${result.details}` : ''))
+        return
+      }
+
+      alert(result.message)
+      await loadTenants()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao corrigir usuário')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const filteredTenants = tenants.filter(tenant => {
     const matchesStatus = statusFilter === 'all' || tenant.subscription_status === statusFilter
     const matchesSearch = searchTerm === '' || 
@@ -161,8 +194,12 @@ export default function LojasPage() {
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           {tenant.subscription_status === 'active' && (
-                            <button onClick={() => handleSuspend(tenant.id)} disabled={actionLoading === tenant.id}
-                              className="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50">Suspender</button>
+                            <>
+                              <button onClick={() => handleFixStoreUser(tenant.id)} disabled={actionLoading === tenant.id}
+                                className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 disabled:opacity-50">Corrigir Usuário</button>
+                              <button onClick={() => handleSuspend(tenant.id)} disabled={actionLoading === tenant.id}
+                                className="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50">Suspender</button>
+                            </>
                           )}
                           {tenant.subscription_status === 'suspended' && (
                             <button onClick={() => handleReactivate(tenant.id)} disabled={actionLoading === tenant.id}

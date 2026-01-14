@@ -70,8 +70,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update tenant: ' + updateError.message }, { status: 500 })
     }
 
+    // Check if store_user already exists
+    const { data: existingUser } = await supabaseAdmin
+      .from('store_users')
+      .select('id')
+      .eq('email', tenant.owner_email.toLowerCase())
+      .maybeSingle()
+
+    if (existingUser) {
+      return NextResponse.json({ success: true, message: 'Tenant approved (user already exists)' })
+    }
+
     // Create store_user for owner (using admin client to bypass RLS)
-    const { error: userError } = await supabaseAdmin
+    const { data: newUser, error: userError } = await supabaseAdmin
       .from('store_users')
       .insert({
         tenant_id: tenantId,
@@ -80,16 +91,25 @@ export async function POST(request: NextRequest) {
         role: 'owner',
         is_active: true
       })
+      .select()
+      .single()
 
     if (userError) {
+      console.error('Store user creation error:', userError)
+      
       // Rollback tenant status if user creation fails
       await supabaseAdmin
         .from('tenants')
         .update({ subscription_status: 'pending', approved_by_admin: false })
         .eq('id', tenantId)
       
-      return NextResponse.json({ error: 'Failed to create store user: ' + userError.message }, { status: 500 })
+      return NextResponse.json({ 
+        error: 'Failed to create store user: ' + userError.message,
+        details: userError
+      }, { status: 500 })
     }
+
+    console.log('Store user created:', newUser)
 
     return NextResponse.json({ success: true, message: 'Tenant approved successfully' })
   } catch (error) {
