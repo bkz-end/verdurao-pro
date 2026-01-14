@@ -58,10 +58,12 @@ export default function LoginPage() {
           .maybeSingle()
       ])
 
-      if (superAdminRes.data) {
-        router.replace('/admin')
-      } else if (storeUserRes.data) {
+      // Super admin with store_user goes to dashboard (like normal user)
+      // Super admin without store_user goes to admin panel
+      if (storeUserRes.data) {
         router.replace('/dashboard')
+      } else if (superAdminRes.data) {
+        router.replace('/admin')
       } else if (tenantRes.data) {
         // User has tenant but no store_user - pending approval
         router.replace('/aguardando-aprovacao')

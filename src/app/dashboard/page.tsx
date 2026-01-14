@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({ 
     todaySales: 0, 
     todayTotal: 0, 
@@ -89,6 +90,15 @@ export default function DashboardPage() {
       }
 
       setUserName(storeUser.name || '')
+
+      // Check if user is super admin
+      const { data: superAdmin } = await supabase
+        .from('super_admin_users')
+        .select('id')
+        .eq('email', user.email.toLowerCase())
+        .maybeSingle()
+      
+      setIsSuperAdmin(!!superAdmin)
 
       // Load tenant info and stats in parallel for speed
       const today = new Date()
@@ -230,6 +240,15 @@ export default function DashboardPage() {
                     <p className="text-sm text-slate-500">{user?.email}</p>
                   </div>
                   <div className="py-1">
+                    {isSuperAdmin && (
+                      <>
+                        <Link href="/admin" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 bg-purple-50" onClick={() => setIsMenuOpen(false)}>
+                          <span className="w-5 h-5 text-purple-600 flex items-center justify-center">👑</span>
+                          <span className="text-purple-700 font-medium">Painel Admin</span>
+                        </Link>
+                        <div className="border-t border-slate-100 my-1" />
+                      </>
+                    )}
                     <Link href="/assinatura" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50" onClick={() => setIsMenuOpen(false)}>
                       <Icons.star className="w-5 h-5 text-slate-400" />
                       <span className="text-slate-700">Assinatura</span>
