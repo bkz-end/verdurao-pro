@@ -3,15 +3,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Product, CashRegisterSession, SalePaymentMethod } from '@/types'
 import { Cart, createCart, addToCart, updateCartItem, removeFromCart, clearCart } from '@/lib/pdv/pdv.service'
-import { SearchBar } from '@/components/pdv/SearchBar'
 import { ProductPillGrid } from '@/components/pdv/ProductPill'
 import { FloatingCart } from '@/components/pdv/FloatingCart'
-import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { QuantityModal } from '@/components/pdv/QuantityModal'
 import { CheckoutModal } from '@/components/pdv/CheckoutModal'
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
 import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
+import { Icons } from '@/components/ui/icons'
 import Link from 'next/link'
 
 export default function PDVPage() {
@@ -23,7 +22,6 @@ export default function PDVPage() {
 }
 
 function PDVContent() {
-  // State
   const [cart, setCart] = useState<Cart>(() => createCart())
   const [searchQuery, setSearchQuery] = useState('')
   const [products, setProducts] = useState<Product[]>([])
@@ -34,9 +32,6 @@ function PDVContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const [storeName, setStoreName] = useState('')
-  const [userName, setUserName] = useState('')
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
-  const [subscriptionStatus, setSubscriptionStatus] = useState('')
   const [cashSession, setCashSession] = useState<CashRegisterSession | null>(null)
   const [tenantId, setTenantId] = useState('')
   const [userId, setUserId] = useState('')
@@ -44,7 +39,6 @@ function PDVContent() {
   
   const { showFeedback, FeedbackComponent } = useFeedback()
 
-  // Load data
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
@@ -60,31 +54,17 @@ function PDVContent() {
 
       if (!storeUser) return
 
-      setUserName(storeUser.name || '')
       setTenantId(storeUser.tenant_id)
       setUserId(storeUser.id)
 
-      // Get tenant info
       const { data: tenant } = await supabase
         .from('tenants')
-        .select('store_name, trial_ends_at, subscription_status')
+        .select('store_name')
         .eq('id', storeUser.tenant_id)
         .single()
 
-      if (tenant) {
-        setStoreName(tenant.store_name)
-        setSubscriptionStatus(tenant.subscription_status || '')
-        
-        if (tenant.trial_ends_at) {
-          const trialEnd = new Date(tenant.trial_ends_at)
-          const now = new Date()
-          const diffTime = trialEnd.getTime() - now.getTime()
-          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0)
-        }
-      }
+      if (tenant) setStoreName(tenant.store_name)
 
-      // Load products
       const { data: productsData } = await supabase
         .from('products')
         .select('*')
@@ -97,7 +77,6 @@ function PDVContent() {
         setFilteredProducts(productsData as Product[])
       }
 
-      // Check for open cash session
       const { data: openSession } = await supabase
         .from('cash_register_sessions')
         .select('*')
@@ -107,7 +86,6 @@ function PDVContent() {
 
       setCashSession(openSession)
 
-      // Load today's sales
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
@@ -128,7 +106,6 @@ function PDVContent() {
     loadData()
   }, [])
 
-  // Monitor online status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
@@ -141,8 +118,8 @@ function PDVContent() {
     }
   }, [])
 
-  // Filter products
   const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
     if (!query.trim()) {
       setFilteredProducts(products)
       return
@@ -151,8 +128,7 @@ function PDVContent() {
     const filtered = products.filter(product => {
       const nameMatch = product.name.toLowerCase().includes(normalizedQuery)
       const skuMatch = product.sku.toLowerCase().includes(normalizedQuery)
-      const categoryMatch = product.category?.toLowerCase().includes(normalizedQuery) ?? false
-      return nameMatch || skuMatch || categoryMatch
+      return nameMatch || skuMatch
     })
     setFilteredProducts(filtered)
   }, [products])
@@ -186,13 +162,12 @@ function PDVContent() {
     setIsCheckoutModalOpen(true)
   }, [cart.items.length])
 
-  const handleCheckoutConfirm = useCallback(async (paymentMethod: SalePaymentMethod, amountPaid?: number) => {
+  const handleCheckoutConfirm = useCallback(async (paymentMethod: SalePaymentMethod) => {
     setIsLoading(true)
 
     try {
       const supabase = createClient()
       
-      // Create sale
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
@@ -207,7 +182,6 @@ function PDVContent() {
 
       if (saleError) throw saleError
 
-      // Create sale items
       const saleItems = cart.items.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
@@ -222,7 +196,6 @@ function PDVContent() {
 
       if (itemsError) throw itemsError
 
-      // Update stock
       for (const item of cart.items) {
         await supabase
           .from('products')
@@ -235,29 +208,19 @@ function PDVContent() {
         currency: 'BRL'
       }).format(cart.total)
 
-      const paymentLabel = paymentMethod === 'dinheiro' ? '💵 Dinheiro' : 
-                          paymentMethod === 'pix' ? '📱 Pix' : 
-                          paymentMethod === 'cartao' ? '💳 Cartão' : '📝 Fiado'
-
-      // Update today's sales
       setTodaySales(prev => ({
         count: prev.count + 1,
         total: prev.total + cart.total
       }))
 
-      // Update products stock locally
       setProducts(prev => prev.map(p => {
         const cartItem = cart.items.find(i => i.product.id === p.id)
-        if (cartItem) {
-          return { ...p, stock: p.stock - cartItem.quantity }
-        }
+        if (cartItem) return { ...p, stock: p.stock - cartItem.quantity }
         return p
       }))
       setFilteredProducts(prev => prev.map(p => {
         const cartItem = cart.items.find(i => i.product.id === p.id)
-        if (cartItem) {
-          return { ...p, stock: p.stock - cartItem.quantity }
-        }
+        if (cartItem) return { ...p, stock: p.stock - cartItem.quantity }
         return p
       }))
 
@@ -266,7 +229,7 @@ function PDVContent() {
 
       showFeedback({
         type: 'success',
-        message: `✓ Venda finalizada! ${formattedTotal} - ${paymentLabel}`,
+        message: `Venda finalizada: ${formattedTotal}`,
         duration: 3000
       })
     } catch (error) {
@@ -281,68 +244,107 @@ function PDVContent() {
     }
   }, [cart, tenantId, userId, cashSession, showFeedback])
 
-  const handleProfileClick = useCallback(() => {}, [])
-
-  const frequentProducts = products.slice(0, 6)
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  const frequentProducts = products.slice(0, 8)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <FeedbackComponent />
       
-      <PDVHeader
-        storeName={storeName || 'Carregando...'}
-        userName={userName || ''}
-        isOnline={isOnline}
-        trialDaysLeft={trialDaysLeft}
-        subscriptionStatus={subscriptionStatus}
-        onProfileClick={handleProfileClick}
-      />
-
-      {/* Quick Stats Bar */}
-      <div className="bg-white border-b border-gray-100 px-4 py-2">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-4 py-3 safe-area-top">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/pdv/caixa" className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
-              ${cashSession ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-              {cashSession ? '🟢' : '🔴'} Caixa
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+              <Icons.chevronLeft className="w-5 h-5 text-slate-600" />
             </Link>
-            <Link href="/pdv/historico" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-medium">
-              📋 Histórico
+            <div>
+              <h1 className="font-semibold text-slate-800">{storeName || 'PDV'}</h1>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                {isOnline ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/pdv/caixa" 
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+                ${cashSession 
+                  ? 'bg-emerald-100 text-emerald-700' 
+                  : 'bg-slate-100 text-slate-600'
+                }`}
+            >
+              <Icons.wallet className="w-4 h-4" />
+              Caixa
+            </Link>
+            <Link 
+              href="/pdv/historico" 
+              className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+            >
+              <Icons.transactions className="w-5 h-5 text-slate-600" />
             </Link>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Hoje</p>
-            <p className="text-sm font-semibold text-gray-800">{todaySales.count} vendas • {formatCurrency(todaySales.total)}</p>
-          </div>
+        </div>
+      </header>
+
+      {/* Stats Bar */}
+      <div className="bg-white border-b border-slate-100 px-4 py-2">
+        <div className="max-w-lg mx-auto flex items-center justify-between text-sm">
+          <span className="text-slate-500">Hoje</span>
+          <span className="font-semibold text-slate-800">
+            {todaySales.count} vendas · {formatCurrency(todaySales.total)}
+          </span>
         </div>
       </div>
 
       {/* Cash Warning */}
       {!cashSession && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
           <div className="max-w-lg mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-600">⚠️</span>
-              <span className="text-sm text-amber-800">Caixa fechado</span>
+            <div className="flex items-center gap-2 text-amber-800">
+              <Icons.losses className="w-4 h-4" />
+              <span className="text-sm font-medium">Caixa fechado</span>
             </div>
             <Link href="/pdv/caixa" className="text-sm font-medium text-amber-700 hover:text-amber-800">
-              Abrir caixa →
+              Abrir caixa
             </Link>
           </div>
         </div>
       )}
 
+      {/* Search */}
+      <div className="bg-white px-4 py-3 border-b border-slate-100">
+        <div className="max-w-lg mx-auto">
+          <div className="relative">
+            <Icons.search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Buscar produto..."
+              autoFocus
+              className="w-full h-12 pl-12 pr-4 bg-slate-50 border border-slate-200 rounded-xl
+                         text-slate-800 placeholder:text-slate-400
+                         focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20
+                         transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => handleSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300"
+              >
+                <Icons.close className="w-4 h-4 text-slate-500" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Products */}
       <main className="flex-1 overflow-y-auto pb-32">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-6">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onSearch={handleSearch}
-            placeholder="Buscar produto..."
-            autoFocus={true}
-          />
-
           {searchQuery.trim() ? (
             <ProductPillGrid
               products={filteredProducts}
@@ -356,7 +358,7 @@ function PDVContent() {
                 <ProductPillGrid
                   products={frequentProducts}
                   onSelect={handleProductSelect}
-                  title="⭐ Frequentes"
+                  title="Frequentes"
                 />
               )}
               <ProductPillGrid
