@@ -107,10 +107,12 @@ export default function AdminDashboardPage() {
 
       if (userError) {
         console.error('Erro ao criar store_user:', userError)
-        // Continue anyway - tenant is approved
+        setError('Tenant aprovado, mas erro ao criar usuário: ' + userError.message)
+        // Don't return - tenant is approved, just show warning
       }
 
       await loadDashboardData()
+      alert('Loja aprovada com sucesso!')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao aprovar loja')
     } finally {
