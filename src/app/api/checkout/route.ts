@@ -38,7 +38,11 @@ export async function POST(request: NextRequest) {
 
     // Create Mercado Pago preference
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN
+    console.log('Access token exists:', !!accessToken)
+    console.log('Access token length:', accessToken?.length)
+    
     if (!accessToken) {
+      console.error('MERCADO_PAGO_ACCESS_TOKEN not found in environment')
       return NextResponse.json({ error: 'Mercado Pago não configurado' }, { status: 500 })
     }
 
@@ -81,8 +85,11 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json()
-      console.error('Mercado Pago error:', errorData)
-      return NextResponse.json({ error: 'Erro ao criar checkout' }, { status: 500 })
+      console.error('Mercado Pago API error:', JSON.stringify(errorData, null, 2))
+      return NextResponse.json({ 
+        error: 'Erro ao criar checkout', 
+        details: errorData.message || errorData.error || 'Unknown error'
+      }, { status: 500 })
     }
 
     const data = await response.json()

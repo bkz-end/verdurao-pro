@@ -59,15 +59,18 @@ export default function AssinaturaPage() {
       })
 
       const data = await response.json()
+      console.log('Checkout response:', data)
 
       if (data.checkoutUrl) {
         // Redirect to Mercado Pago checkout
         window.location.href = data.checkoutUrl
       } else {
-        alert(data.error || 'Erro ao criar checkout. Tente novamente.')
+        const errorMsg = data.details || data.error || 'Erro ao criar checkout'
+        alert(`Erro: ${errorMsg}`)
         setLoading(false)
       }
     } catch (error) {
+      console.error('Checkout error:', error)
       alert('Erro ao processar. Tente novamente.')
       setLoading(false)
     }
