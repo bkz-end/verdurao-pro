@@ -270,6 +270,11 @@ export default function CaixaPage() {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-gray-800">Caixa</h1>
           </div>
+          <Link href="/pdv/caixa/historico" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </Link>
         </div>
       </header>
 
