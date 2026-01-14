@@ -11,6 +11,7 @@ import { QuantityModal } from '@/components/pdv/QuantityModal'
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
 import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
+import { SubscriptionFloatingButton } from '@/components/subscription/SubscriptionFloatingButton'
 
 /**
  * PDV Page - Point of Sale mobile-first interface
@@ -278,6 +279,9 @@ function PDVContent() {
         }}
         onConfirm={handleQuantityConfirm}
       />
+
+      {/* Subscription Floating Button */}
+      <SubscriptionFloatingButton />
     </div>
   )
 }

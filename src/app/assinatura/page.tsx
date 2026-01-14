@@ -167,8 +167,8 @@ export default function AssinaturaPage() {
               ))}
             </div>
 
-            {/* Botão de assinar */}
-            {subscriptionStatus !== 'active' && (
+            {/* Botão de assinar - mostra durante trial ou se não estiver ativo */}
+            {(isTrialActive || subscriptionStatus !== 'active') && (
               <button
                 onClick={handleSubscribe}
                 disabled={loading}
