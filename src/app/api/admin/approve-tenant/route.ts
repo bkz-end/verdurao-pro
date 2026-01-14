@@ -4,17 +4,23 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(request: NextRequest) {
   try {
     // Validate environment variables
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing env vars:', {
-        url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        key: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-      })
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ 
+        error: 'Server configuration error',
+        debug: {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!serviceRoleKey,
+          urlPrefix: supabaseUrl?.substring(0, 20) || 'missing'
+        }
+      }, { status: 500 })
     }
 
     const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      supabaseUrl,
+      serviceRoleKey,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
     const { tenantId, adminEmail } = await request.json()
