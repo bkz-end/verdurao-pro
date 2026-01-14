@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       auto_return: 'approved',
       external_reference: tenant.id,
       notification_url: `${appUrl}/api/webhooks/mercado-pago`,
-      statement_descriptor: 'VERDURAOPRO',
+      statement_descriptor: 'feirapro',
       expires: false
     }
 

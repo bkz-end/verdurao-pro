@@ -1,4 +1,4 @@
-const CACHE_NAME = 'verduraopro-v1';
+const CACHE_NAME = 'feirapro-v1';
 const STATIC_ASSETS = [
   '/',
   '/pdv',

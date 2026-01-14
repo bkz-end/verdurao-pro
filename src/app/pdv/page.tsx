@@ -8,6 +8,7 @@ import { ProductPillGrid } from '@/components/pdv/ProductPill'
 import { FloatingCart } from '@/components/pdv/FloatingCart'
 import { PDVHeader } from '@/components/pdv/PDVHeader'
 import { QuantityModal } from '@/components/pdv/QuantityModal'
+import { CheckoutModal, SalePaymentMethod } from '@/components/pdv/CheckoutModal'
 import { useFeedback } from '@/hooks/useFeedback'
 import { createClient } from '@/lib/supabase/client'
 import { SubscriptionGuard } from '@/components/subscription/SubscriptionGuard'
@@ -41,6 +42,7 @@ function PDVContent() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuantityModalOpen, setIsQuantityModalOpen] = useState(false)
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const [storeName, setStoreName] = useState('')
@@ -158,31 +160,34 @@ function PDVContent() {
     setCart(currentCart => clearCart(currentCart))
   }, [])
 
-  // Handle sale finalization (touch 3)
-  // Requirements: 4.5 - Finalize sale in max 3 touches
-  const handleFinalize = useCallback(async () => {
+  // Handle sale finalization - opens checkout modal
+  const handleFinalize = useCallback(() => {
     if (cart.items.length === 0) return
+    setIsCheckoutModalOpen(true)
+  }, [cart.items.length])
 
+  // Handle checkout confirmation with payment method
+  const handleCheckoutConfirm = useCallback(async (paymentMethod: SalePaymentMethod, amountPaid?: number) => {
     setIsLoading(true)
 
     try {
-      // TODO: Integrate with PDVService.finalizeSale() when Supabase is connected
-      // For now, simulate API call for development
+      // TODO: Save sale to database with payment method
       await new Promise(resolve => setTimeout(resolve, 800))
 
-      // Format total for display
       const formattedTotal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
       }).format(cart.total)
 
-      // Clear cart after successful sale
-      setCart(createCart())
+      const paymentLabel = paymentMethod === 'dinheiro' ? '💵 Dinheiro' : 
+                          paymentMethod === 'pix' ? '📱 Pix' : '💳 Cartão'
 
-      // Show success feedback with visual notification
+      setCart(createCart())
+      setIsCheckoutModalOpen(false)
+
       showFeedback({
         type: 'success',
-        message: `Venda finalizada! Total: ${formattedTotal}`,
+        message: `Venda finalizada! ${formattedTotal} - ${paymentLabel}`,
         duration: 3000
       })
     } catch (error) {
@@ -278,6 +283,15 @@ function PDVContent() {
           setSelectedProduct(null)
         }}
         onConfirm={handleQuantityConfirm}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        cart={cart}
+        isOpen={isCheckoutModalOpen}
+        isLoading={isLoading}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        onConfirm={handleCheckoutConfirm}
       />
 
       {/* Subscription Floating Button */}

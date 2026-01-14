@@ -475,7 +475,7 @@ export class MercadoPagoService {
    * Gets the webhook URL for notifications
    */
   private getWebhookUrl(): string {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.verduraopro.com.br'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.feirapro.com.br'
     return `${baseUrl}/api/webhooks/mercado-pago`
   }
 
