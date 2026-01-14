@@ -64,12 +64,16 @@ export default function AdminDashboardPage() {
       const result = await response.json()
 
       if (!response.ok) {
-        setError(result.error || 'Erro ao aprovar loja')
+        const errorMsg = result.details 
+          ? `${result.error}\n\nDetalhes: ${JSON.stringify(result.details, null, 2)}`
+          : result.error || 'Erro ao aprovar loja'
+        setError(errorMsg)
+        alert(`Erro: ${errorMsg}`)
         return
       }
 
       await loadDashboardData()
-      alert('Loja aprovada com sucesso!')
+      alert(`✅ ${result.message || 'Loja aprovada com sucesso!'}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao aprovar loja')
     } finally {
