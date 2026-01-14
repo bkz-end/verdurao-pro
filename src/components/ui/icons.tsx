@@ -40,6 +40,7 @@ import {
   HelpCircle,
   Loader2,
   CircleDot,
+  Filter,
   type LucideProps
 } from 'lucide-react'
 
@@ -102,6 +103,7 @@ export const Icons = {
   help: (props: LucideProps) => <HelpCircle {...defaultProps} {...props} />,
   loader: (props: LucideProps) => <Loader2 {...defaultProps} {...props} />,
   dot: (props: LucideProps) => <CircleDot {...defaultProps} {...props} />,
+  filter: (props: LucideProps) => <Filter {...defaultProps} {...props} />,
 }
 
 export type IconName = keyof typeof Icons
